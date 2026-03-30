@@ -53,6 +53,7 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             required
             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
           />
+          <p className="text-xs text-gray-400 mt-1">Used only to personalize the book</p>
         </div>
 
         {/* Age */}
@@ -64,8 +65,8 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             type="number"
             value={child.age || ''}
             onChange={(e) => onChange({ ...child, age: parseInt(e.target.value) || 0 })}
-            placeholder="4–12"
-            min={4}
+            placeholder="2–12"
+            min={2}
             max={12}
             required
             className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
@@ -81,7 +82,6 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             {[
               { value: 'girl', label: '👧 Girl' },
               { value: 'boy', label: '🧒 Boy' },
-              { value: 'explorer', label: '🌟 Explorer' },
             ].map(({ value, label }) => (
               <button
                 key={value}

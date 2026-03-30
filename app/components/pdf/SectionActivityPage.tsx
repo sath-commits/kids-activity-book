@@ -61,8 +61,8 @@ const s = StyleSheet.create({
   funFactText: {
     fontSize: 10,
     color: '#555',
-    flex: 1,
     fontStyle: 'italic',
+    flex: 1,
   },
   sectionLabel: {
     fontFamily: 'Nunito-Bold',
@@ -123,6 +123,16 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
+  riddleBox: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#fb923c',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
   personBox: {
     backgroundColor: '#fff0f3',
     borderRadius: 6,
@@ -161,7 +171,6 @@ const s = StyleSheet.create({
     fontSize: 9.5,
     color: colors.muted,
     textAlign: 'center',
-    fontStyle: 'italic',
   },
   twoCol: {
     flexDirection: 'row',
@@ -243,6 +252,20 @@ export default function SectionActivityPage({ section, childPersonalization, pag
           <Text style={s.boxText}>{section.thinkQuestion}</Text>
         </View>
       </View>
+
+      {/* Riddle */}
+      {section.riddle && (
+        <View style={s.riddleBox}>
+          <Text style={s.boxIcon}>🧩</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.boxLabel, { color: '#c2410c' }]}>Riddle Time!</Text>
+            <Text style={s.boxText}>{section.riddle}</Text>
+            <Text style={[s.boxText, { color: '#9a3412', fontSize: 9, marginTop: 3 }]}>
+              (Answer in the answer key at the back!)
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* Personalization */}
       {childPersonalization.personalizedChallengeNote && (

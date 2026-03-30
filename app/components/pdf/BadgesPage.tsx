@@ -52,7 +52,6 @@ const s = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
     marginTop: 4,
-    fontStyle: 'italic',
   },
 })
 

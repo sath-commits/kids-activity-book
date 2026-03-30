@@ -3,23 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { GeneratedBook } from '@/lib/types'
+import { getBook } from '@/lib/bookStore'
 import PreviewScreen from '../components/PreviewScreen'
 
 export default function PreviewPage() {
   const router = useRouter()
-  const [book, setBook] = useState<GeneratedBook | null>(null)
+  const [book, setBookState] = useState<GeneratedBook | null>(null)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('little-explorer-book')
-    if (!raw) {
+    const stored = getBook()
+    if (!stored) {
       router.replace('/')
       return
     }
-    try {
-      setBook(JSON.parse(raw) as GeneratedBook)
-    } catch {
-      router.replace('/')
-    }
+    setBookState(stored)
   }, [router])
 
   if (!book) {

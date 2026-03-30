@@ -12,7 +12,6 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     marginBottom: 16,
-    fontStyle: 'italic',
   },
   grid: {
     flexDirection: 'row',
@@ -32,7 +31,6 @@ const s = StyleSheet.create({
   question: {
     fontSize: 9,
     color: colors.muted,
-    fontStyle: 'italic',
     marginBottom: 2,
     lineHeight: 1.3,
   },
@@ -53,8 +51,14 @@ export default function AnswerKeyPage({ sections, pageNumber }: AnswerKeyPagePro
         {sections.map((section) => (
           <View key={section.id} style={s.item}>
             <Text style={s.sectionTitle}>{section.emoji} {section.title}</Text>
-            <Text style={s.question}>Q: {section.thinkQuestion}</Text>
+            <Text style={s.question}>Think: {section.thinkQuestion}</Text>
             <Text style={s.answer}>A: {section.thinkQuestionAnswer}</Text>
+            {section.riddle && (
+              <View>
+                <Text style={[s.question, { marginTop: 4 }]}>🧩 Riddle: {section.riddle}</Text>
+                <Text style={s.answer}>A: {section.riddleAnswer}</Text>
+              </View>
+            )}
           </View>
         ))}
       </View>

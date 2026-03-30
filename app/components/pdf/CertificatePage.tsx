@@ -77,7 +77,6 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: '#555',
     textAlign: 'center',
-    fontStyle: 'italic',
     marginBottom: 20,
   },
   fieldRow: {

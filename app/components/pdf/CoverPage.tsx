@@ -4,7 +4,7 @@ import { colors } from './pdfStyles'
 
 interface CoverPageProps {
   destinationDisplayName: string
-  children: ChildPersonalization[]
+  explorers: ChildPersonalization[]
   tripDates?: { start: string; end: string }
   coverImageB64: string | null
 }
@@ -124,11 +124,11 @@ const genderEmoji = (gender: string) => {
   return '🌟'
 }
 
-export default function CoverPage({ destinationDisplayName, children, tripDates, coverImageB64 }: CoverPageProps) {
+export default function CoverPage({ destinationDisplayName, explorers, tripDates, coverImageB64 }: CoverPageProps) {
   const namesDisplay =
-    children.length === 1
-      ? `${children[0].name}'s Adventure Book`
-      : `${children.map((c) => c.name).slice(0, -1).join(', ')} & ${children[children.length - 1].name}'s Adventure Book`
+    explorers.length === 1
+      ? `${explorers[0].name}'s Adventure Book`
+      : `${explorers.map((c) => c.name).slice(0, -1).join(', ')} & ${explorers[explorers.length - 1].name}'s Adventure Book`
 
   return (
     <Page size="A4" style={s.page}>
@@ -150,7 +150,7 @@ export default function CoverPage({ destinationDisplayName, children, tripDates,
         <Text style={s.subtitle}>Adventure Book</Text>
 
         <View style={s.childRow}>
-          {children.map((child) => (
+          {explorers.map((child) => (
             <View key={child.name} style={s.childChip}>
               <Text style={s.childName}>{genderEmoji(child.gender)} {child.name}</Text>
               <Text style={s.childAge}>age {child.age}</Text>

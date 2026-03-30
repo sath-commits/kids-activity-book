@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOpenAI } from '@/lib/openai'
 import { getSupabase, BookContent, DestinationCache } from '@/lib/supabase'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { normalizePlaces, generateMapImage } from '@/lib/mapbox'
 
 export const maxDuration = 90
 
 interface Child {
   name: string
   age: number
-  gender: 'boy' | 'girl' | 'explorer'
+  gender: 'boy' | 'girl'
   interests?: string
 }
 
@@ -19,12 +20,13 @@ interface GenerateBookRequest {
   children: Child[]
   language: string
   parentEmail: string
+  places?: string[]
 }
 
 interface ChildPersonalization {
   name: string
   age: number
-  gender: 'boy' | 'girl' | 'explorer'
+  gender: 'boy' | 'girl'
   keywords: string[]
   personalizedChallengeNote: string
   personalizedDrawingPrompt: string
@@ -37,19 +39,23 @@ function validateInput(body: GenerateBookRequest): string | null {
   if (body.children.length > 4) return 'Maximum 4 children'
   for (const child of body.children) {
     if (!child.name || child.name.length > 20) return 'Child name invalid'
-    if (!child.age || child.age < 4 || child.age > 12) return 'Child age must be 4-12'
-    if (!['boy', 'girl', 'explorer'].includes(child.gender)) return 'Invalid gender'
+    if (!child.age || child.age < 2 || child.age > 12) return 'Child age must be 2-12'
+    if (!['boy', 'girl'].includes(child.gender)) return 'Invalid gender'
     if (child.interests && child.interests.length > 100) return 'Interests too long'
   }
   if (!body.parentEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.parentEmail)) return 'Invalid email'
   return null
 }
 
-async function generateDestinationContent(displayName: string): Promise<BookContent> {
+async function generateDestinationContent(displayName: string, places?: string[]): Promise<BookContent> {
+  const sectionsInstruction = places && places.length > 0
+    ? `Generate sections for ONLY these specific places the family will visit (in this order): ${places.join(', ')}. Do not add or substitute other attractions — only cover what they listed.`
+    : `Generate 4-8 sections depending on how many distinct notable attractions the destination has. If it is a city, pick the most iconic kid-friendly landmarks/activities. If it is a national park, each major attraction/trail/feature gets a section. If it is a zoo or museum, pick themed zones.`
+
   const completion = await getOpenAI().chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.7,
-    max_tokens: 4000,
+    max_tokens: 4500,
     messages: [
       {
         role: 'system',
@@ -75,6 +81,8 @@ Return a JSON object with this exact schema (no markdown, no code fences, pure J
       "challenge": "One fun physical or sensory challenge to do here",
       "thinkQuestion": "One open-ended thinking question",
       "thinkQuestionAnswer": "Kid-friendly answer for the answer key",
+      "riddle": "A fun kid-friendly riddle about something you'd find at this location (e.g. 'I have needles but I don't sew. What am I?')",
+      "riddleAnswer": "The answer to the riddle",
       "carChallenge": "A car/travel challenge for if this section involves a drive (null if not applicable)",
       "imagePrompt": "Detailed DALL-E prompt for a coloring page illustration of this specific place. Describe the scene, key landmark features, and optionally a child character exploring. Do not mention color — this is line art only."
     }
@@ -84,7 +92,7 @@ Return a JSON object with this exact schema (no markdown, no code fences, pure J
   "badgeNames": ["One badge name per section, e.g. 'Mountain Explorer', 'Beach Detective'"]
 }
 
-Generate 4-8 sections depending on how many distinct notable attractions the destination has. If it is a city, pick the most iconic kid-friendly landmarks/activities. If it is a national park, each major attraction/trail/feature gets a section. If it is a zoo or museum, pick themed zones. Badge names array must have the same length as sections array.`,
+${sectionsInstruction} Badge names array must have the same length as sections array.`,
       },
     ],
   })
@@ -100,21 +108,40 @@ Generate 4-8 sections depending on how many distinct notable attractions the des
   }
 }
 
-async function generateImages(
-  displayName: string,
-  content: BookContent
-): Promise<{ coverImage: string | null; sectionImages: (string | null)[] }> {
-  const coverPrompt = `Children's activity book cover illustration, black and white coloring page style, thick clean outlines, no shading, no fill, white background, printable: A cheerful wide landscape scene of ${displayName} with iconic landmarks and natural features visible. Leave the top 25% of the image as clear sky for a title banner. Include 2-3 small child silhouettes with backpacks in the foreground looking at the view. Style: clean bold linework like a children's coloring book.`
+async function generateCoverImage(displayName: string, children: Child[]): Promise<string | null> {
+  const childDescriptions = children.map((c) => `a ${c.age}-year-old ${c.gender}`)
+  const kidsDesc =
+    childDescriptions.length === 1
+      ? childDescriptions[0]
+      : childDescriptions.length === 2
+        ? `${childDescriptions[0]} and ${childDescriptions[1]}`
+        : `${childDescriptions.slice(0, -1).join(', ')}, and ${childDescriptions[childDescriptions.length - 1]}`
 
+  const prompt = `Children's illustrated adventure book cover, full color, vibrant, warm, cartoon style similar to a children's picture book: A cheerful landscape scene of ${displayName} with iconic landmarks and natural features beautifully depicted in the background. In the foreground, ${kidsDesc} wearing colorful outdoor gear and backpacks, smiling and excited. Style: bright saturated colors, friendly rounded cartoon illustration, rich detailed background showing the destination's key scenery. Leave the top 20% of the image as open sky area for a title banner overlay.`
+
+  try {
+    const result = await getOpenAI().images.generate({
+      model: 'dall-e-3',
+      prompt,
+      n: 1,
+      size: '1024x1024',
+      response_format: 'b64_json',
+    })
+    return result.data?.[0]?.b64_json ?? null
+  } catch (e) {
+    console.error('Cover image generation failed:', e)
+    return null
+  }
+}
+
+async function generateSectionImages(displayName: string, content: BookContent): Promise<(string | null)[]> {
   const sectionPrompts = content.sections.map(
     (s) =>
       `Children's activity book coloring page, black and white line art only, thick clean outlines, no gray shading, no color fill, white background, printable quality: ${s.imagePrompt}`
   )
 
-  const allPrompts = [coverPrompt, ...sectionPrompts]
-
   const results = await Promise.allSettled(
-    allPrompts.map((prompt) =>
+    sectionPrompts.map((prompt) =>
       getOpenAI().images.generate({
         model: 'dall-e-3',
         prompt,
@@ -125,18 +152,13 @@ async function generateImages(
     )
   )
 
-  const images = results.map((r) => {
+  return results.map((r) => {
     if (r.status === 'fulfilled') {
       return r.value.data?.[0]?.b64_json ?? null
     }
-    console.error('Image generation failed:', r.reason)
+    console.error('Section image generation failed:', r.reason)
     return null
   })
-
-  return {
-    coverImage: images[0],
-    sectionImages: images.slice(1),
-  }
 }
 
 async function personalizeChildren(children: Child[], destination: string): Promise<ChildPersonalization[]> {
@@ -252,83 +274,91 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: validationError }, { status: 400 })
   }
 
-  const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail } = body
-
-  // Step A: Check cache
-  const { data: cached } = await getSupabase()
-    .from('destination_cache')
-    .select('*')
-    .eq('destination_slug', language === 'en' ? destinationSlug : `${destinationSlug}_${language}`)
-    .maybeSingle()
+  const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail, places } = body
+  const hasItinerary = Array.isArray(places) && places.length > 0
 
   let content: BookContent
-  let coverImageB64: string | null
   let sectionImagesB64: (string | null)[]
   let cacheHit = false
 
-  if (cached) {
-    cacheHit = true
-    content = cached.sections_json as unknown as BookContent
-    // Reconstruct BookContent from flat cache fields
-    content = {
-      destinationIntro: (cached as DestinationCache & { destination_intro?: string }).destination_intro ?? '',
-      sections: cached.sections_json as unknown as BookContent['sections'],
-      scavengerHuntItems: cached.scavenger_hunt_json as unknown as string[],
-      bingoGrid: cached.bingo_grid_json as unknown as string[],
-      badgeNames: cached.badge_names_json as unknown as string[],
-    }
-    coverImageB64 = cached.cover_image_b64
-    sectionImagesB64 = cached.section_images_b64 as unknown as (string | null)[]
+  let placeCoords: ([number, number] | null)[] | undefined
 
-    // Increment hit_count
-    await getSupabase()
-      .from('destination_cache')
-      .update({ hit_count: (cached.hit_count ?? 0) + 1 })
-      .eq('destination_slug', cached.destination_slug)
+  if (hasItinerary) {
+    // Geocode for map coordinates only — keep user's original place names for content
+    const geo = await normalizePlaces(places!, destinationDisplayName)
+    placeCoords = geo.coords
+
+    // Itinerary-specific — always generate fresh, never cache
+    content = await generateDestinationContent(destinationDisplayName, places!)
+    sectionImagesB64 = await generateSectionImages(destinationDisplayName, content)
   } else {
-    // Step B: Generate content
-    content = await generateDestinationContent(destinationDisplayName)
+    // Step A: Check destination cache
+    const { data: cached } = await getSupabase()
+      .from('destination_cache')
+      .select('*')
+      .eq('destination_slug', language === 'en' ? destinationSlug : `${destinationSlug}_${language}`)
+      .maybeSingle()
 
-    // Step C: Generate images in parallel
-    const { coverImage, sectionImages } = await generateImages(destinationDisplayName, content)
-    coverImageB64 = coverImage
-    sectionImagesB64 = sectionImages
+    if (cached) {
+      cacheHit = true
+      content = {
+        destinationIntro: (cached as DestinationCache & { destination_intro?: string }).destination_intro ?? '',
+        sections: cached.sections_json as unknown as BookContent['sections'],
+        scavengerHuntItems: cached.scavenger_hunt_json as unknown as string[],
+        bingoGrid: cached.bingo_grid_json as unknown as string[],
+        badgeNames: cached.badge_names_json as unknown as string[],
+      }
+      sectionImagesB64 = cached.section_images_b64 as unknown as (string | null)[]
 
-    // Step F: Translate if needed
-    const languageNames: Record<string, string> = {
-      es: 'Spanish',
-      fr: 'French',
-      hi: 'Hindi',
-      zh: 'Chinese (Simplified)',
-      pt: 'Portuguese',
+      // Increment hit_count
+      await getSupabase()
+        .from('destination_cache')
+        .update({ hit_count: (cached.hit_count ?? 0) + 1 })
+        .eq('destination_slug', cached.destination_slug)
+    } else {
+      // Generate content
+      content = await generateDestinationContent(destinationDisplayName)
+      sectionImagesB64 = await generateSectionImages(destinationDisplayName, content)
+
+      // Translate if needed
+      const languageNames: Record<string, string> = {
+        es: 'Spanish',
+        fr: 'French',
+        hi: 'Hindi',
+        zh: 'Chinese (Simplified)',
+        pt: 'Portuguese',
+      }
+      if (language !== 'en' && languageNames[language]) {
+        content = await translateContent(content, language, languageNames[language])
+      }
+
+      // Save to Supabase (cover not cached)
+      const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
+      await getSupabase().from('destination_cache').upsert({
+        destination_slug: cacheSlug,
+        destination_display_name: destinationDisplayName,
+        destination_intro: content.destinationIntro,
+        sections_json: content.sections,
+        cover_image_b64: '',
+        section_images_b64: sectionImagesB64,
+        scavenger_hunt_json: content.scavengerHuntItems,
+        bingo_grid_json: content.bingoGrid,
+        badge_names_json: content.badgeNames,
+        answer_key_json: Object.fromEntries(
+          content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
+        ),
+        hit_count: 1,
+      })
     }
-    if (language !== 'en' && languageNames[language]) {
-      content = await translateContent(content, language, languageNames[language])
-    }
-
-    // Step D: Save to Supabase
-    const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
-    await getSupabase().from('destination_cache').upsert({
-      destination_slug: cacheSlug,
-      destination_display_name: destinationDisplayName,
-      destination_intro: content.destinationIntro,
-      sections_json: content.sections,
-      cover_image_b64: coverImageB64 ?? '',
-      section_images_b64: sectionImagesB64,
-      scavenger_hunt_json: content.scavengerHuntItems,
-      bingo_grid_json: content.bingoGrid,
-      badge_names_json: content.badgeNames,
-      answer_key_json: Object.fromEntries(
-        content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
-      ),
-      hit_count: 1,
-    })
   }
 
-  // Step E: Personalize children (always fresh)
-  const childPersonalization = await personalizeChildren(children, destinationDisplayName)
+  // Cover image + child personalization + map (if itinerary) — all in parallel
+  const [coverImageB64, childPersonalization, mapImageB64] = await Promise.all([
+    generateCoverImage(destinationDisplayName, children),
+    personalizeChildren(children, destinationDisplayName),
+    hasItinerary ? generateMapImage(places!, placeCoords!) : Promise.resolve(null),
+  ])
 
-  // Step G: Return to client
   return NextResponse.json({
     destinationDisplayName,
     destinationSlug,
@@ -340,5 +370,7 @@ export async function POST(req: NextRequest) {
     childPersonalization,
     language,
     parentEmail,
+    places: hasItinerary ? places : undefined,
+    mapImageB64: mapImageB64 ?? null,
   })
 }

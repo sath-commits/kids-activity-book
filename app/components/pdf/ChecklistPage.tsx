@@ -40,7 +40,6 @@ const s = StyleSheet.create({
   badgeName: {
     fontSize: 10,
     color: colors.muted,
-    fontStyle: 'italic',
   },
   intro: {
     fontSize: 12,

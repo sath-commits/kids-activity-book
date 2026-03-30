@@ -9,13 +9,14 @@ import { SUPPORTED_LANGUAGES } from '@/lib/languageCodes'
 const defaultChild = (): Child => ({
   name: '',
   age: 0,
-  gender: 'explorer',
+  gender: 'girl',
   interests: '',
 })
 
 export default function BookForm() {
   const router = useRouter()
   const [destination, setDestination] = useState('')
+  const [places, setPlaces] = useState('')
   const [tripStart, setTripStart] = useState('')
   const [tripEnd, setTripEnd] = useState('')
   const [children, setChildren] = useState<Child[]>([defaultChild()])
@@ -51,7 +52,7 @@ export default function BookForm() {
     // Validate children
     for (const child of children) {
       if (!child.name.trim()) return setError('Please enter a name for each explorer.')
-      if (!child.age || child.age < 4 || child.age > 12) return setError('Each explorer must be between 4 and 12 years old.')
+      if (!child.age || child.age < 2 || child.age > 12) return setError('Each explorer must be between 2 and 12 years old.')
     }
 
     if (!destination.trim()) return setError('Please enter your destination.')
@@ -78,12 +79,18 @@ export default function BookForm() {
       }
 
       // Store form state and canonicalized info in sessionStorage for loading/preview pages
+      const parsedPlaces = places
+        .split(/[\n,]+/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+
       const formState: FormState & { destinationSlug: string; displayName: string; cacheHit: boolean } = {
         destination: canonData.displayName,
         tripDates: tripStart && tripEnd ? { start: tripStart, end: tripEnd } : null,
         children,
         language,
         parentEmail,
+        places: parsedPlaces.length > 0 ? parsedPlaces : undefined,
         destinationSlug: canonData.slug,
         displayName: canonData.displayName,
         cacheHit: canonData.cacheHit,
@@ -119,6 +126,23 @@ export default function BookForm() {
               required
               className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-base transition-colors"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              Specific places you&apos;ll visit{' '}
+              <span className="text-gray-400 font-normal">(optional but recommended)</span>
+            </label>
+            <textarea
+              value={places}
+              onChange={(e) => setPlaces(e.target.value)}
+              placeholder="e.g. the aquarium, downtown, beach boardwalk, theme park"
+              rows={2}
+              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-base transition-colors resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              We&apos;ll build the book around your actual stops and add a map of your route.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

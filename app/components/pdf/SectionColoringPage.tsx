@@ -63,7 +63,6 @@ const s = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
     marginTop: 8,
-    fontStyle: 'italic',
   },
 })
 

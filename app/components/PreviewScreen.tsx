@@ -1,16 +1,20 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { GeneratedBook } from '@/lib/types'
+import { clearBook } from '@/lib/bookStore'
 
-// Dynamically import PDF renderer (client-side only)
-const PDFDownloadLink = dynamic(
-  () => import('@react-pdf/renderer').then((m) => m.PDFDownloadLink),
-  { ssr: false }
-)
-const BookPDF = dynamic(() => import('./pdf/BookPDF'), { ssr: false })
+// Load all @react-pdf/renderer usage as a single dynamic chunk (avoids ChunkLoadError)
+const PDFActions = dynamic(() => import('./PDFActions'), {
+  ssr: false,
+  loading: () => (
+    <button disabled className="w-full py-4 px-8 rounded-2xl bg-green-300 text-white font-bold text-lg">
+      ⏳ Loading PDF…
+    </button>
+  ),
+})
 
 interface PreviewScreenProps {
   book: GeneratedBook
@@ -21,7 +25,6 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
   const [emailSent, setEmailSent] = useState(false)
   const [emailLoading, setEmailLoading] = useState(false)
   const [emailError, setEmailError] = useState<string | null>(null)
-  const [pdfReady, setPdfReady] = useState(false)
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
 
   const childNames = book.childPersonalization.map((c) => c.name)
@@ -38,7 +41,6 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
     setEmailError(null)
 
     try {
-      // Convert blob to base64
       const arrayBuffer = await pdfBlob.arrayBuffer()
       const base64 = Buffer.from(arrayBuffer).toString('base64')
 
@@ -72,15 +74,12 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-5xl mb-3">🎉</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Your book is ready!
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Your book is ready!</h1>
           <p className="text-green-700 font-medium">
-            {namesDisplay}'s {book.destinationDisplayName} Explorer Adventure
+            {namesDisplay}&apos;s {book.destinationDisplayName} Explorer Adventure
           </p>
           <p className="text-gray-500 text-sm mt-1">
             {book.content.sections.length} sections · {childNames.length} explorer{childNames.length > 1 ? 's' : ''}
-            {book.content.sections[0] && ` · ${book.language === 'en' ? 'English' : book.language}`}
           </p>
           {book.cacheHit && (
             <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
@@ -91,7 +90,6 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
 
         {/* Preview cards */}
         <div className="grid grid-cols-2 gap-4 mb-8">
-          {/* Cover preview */}
           <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
             {book.coverImageB64 ? (
               <img
@@ -110,7 +108,6 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
             </div>
           </div>
 
-          {/* Sample section preview */}
           {book.sectionImagesB64?.[0] ? (
             <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
               <img
@@ -137,7 +134,7 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
 
         {/* Book summary */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-          <h2 className="font-bold text-gray-700 mb-3 text-sm">📋 What's inside:</h2>
+          <h2 className="font-bold text-gray-700 mb-3 text-sm">📋 What&apos;s inside:</h2>
           <div className="space-y-1">
             {book.content.sections.map((s) => (
               <div key={s.id} className="flex items-center gap-2 text-sm text-gray-600">
@@ -152,79 +149,41 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
             <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">🏅 Explorer Badges</span>
             {childNames.map((name) => (
               <span key={name} className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
-                🏆 {name}'s Certificate
+                🏆 {name}&apos;s Certificate
               </span>
             ))}
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="space-y-3">
-          {/* Download PDF */}
-          <div className="w-full">
-            {typeof window !== 'undefined' && (
-              <PDFDownloadLink
-                document={<BookPDF book={book} />}
-                fileName={fileName}
-                className="block w-full"
-              >
-                {({ loading, url, blob, error: pdfError }) => {
-                  if (blob && !pdfBlob) setPdfBlob(blob)
-                  return (
-                    <button
-                      disabled={loading || !!pdfError}
-                      className="w-full py-4 px-8 rounded-2xl bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold text-lg transition-colors shadow-lg shadow-green-200"
-                    >
-                      {loading ? '⏳ Building PDF…' : pdfError ? '❌ PDF Error' : '⬇️ Download PDF'}
-                    </button>
-                  )
-                }}
-              </PDFDownloadLink>
-            )}
-          </div>
+        {/* PDF actions (download + email) */}
+        <PDFActions
+          book={book}
+          fileName={fileName}
+          onBlobReady={setPdfBlob}
+          onEmailSend={handleEmailSend}
+          emailSent={emailSent}
+          emailLoading={emailLoading}
+          emailError={emailError}
+          pdfBlob={pdfBlob}
+        />
 
-          {/* Email button */}
-          <button
-            onClick={handleEmailSend}
-            disabled={emailLoading || emailSent || !pdfBlob}
-            className={`w-full py-3 px-8 rounded-2xl border-2 font-semibold text-base transition-colors ${
-              emailSent
-                ? 'border-green-300 bg-green-50 text-green-700'
-                : 'border-green-400 text-green-700 hover:bg-green-50 disabled:opacity-50'
-            }`}
-          >
-            {emailSent
-              ? '✅ Email sent!'
-              : emailLoading
-              ? '📨 Sending…'
-              : `📧 Email to ${book.parentEmail}`}
-          </button>
-
-          {emailError && (
-            <p className="text-red-600 text-sm text-center">{emailError}</p>
-          )}
-
-          {!pdfBlob && (
-            <p className="text-xs text-gray-400 text-center">
-              The email button will activate once the PDF has finished loading above.
-            </p>
-          )}
-
-          {/* Start over */}
-          <button
-            onClick={() => {
-              sessionStorage.removeItem('little-explorer-book')
-              sessionStorage.removeItem('little-explorer-form')
-              router.push('/')
-            }}
-            className="w-full py-2.5 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
-          >
-            🔄 Make another book
-          </button>
-        </div>
+        {/* Start over */}
+        <button
+          onClick={() => {
+            clearBook()
+            sessionStorage.removeItem('little-explorer-form')
+            router.push('/')
+          }}
+          className="w-full py-2.5 mt-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+        >
+          🔄 Make another book
+        </button>
 
         <p className="text-center text-xs text-gray-400 mt-8">
-          Little Explorer · <a href="https://builtthisweekend.com" className="underline">builtthisweekend.com</a>
+          Little Explorer ·{' '}
+          <a href="https://builtthisweekend.com" className="underline">
+            builtthisweekend.com
+          </a>
         </p>
       </div>
     </div>

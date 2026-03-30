@@ -1,7 +1,7 @@
 export interface Child {
   name: string
   age: number
-  gender: 'boy' | 'girl' | 'explorer'
+  gender: 'boy' | 'girl'
   interests?: string
 }
 
@@ -13,7 +13,7 @@ export interface TripDates {
 export interface ChildPersonalization {
   name: string
   age: number
-  gender: 'boy' | 'girl' | 'explorer'
+  gender: 'boy' | 'girl'
   keywords: string[]
   personalizedChallengeNote: string
   personalizedDrawingPrompt: string
@@ -30,6 +30,8 @@ export interface SectionContent {
   challenge: string
   thinkQuestion: string
   thinkQuestionAnswer: string
+  riddle: string
+  riddleAnswer: string
   carChallenge: string | null
   imagePrompt: string
 }
@@ -53,6 +55,8 @@ export interface GeneratedBook {
   childPersonalization: ChildPersonalization[]
   language: string
   parentEmail: string
+  places?: string[]
+  mapImageB64?: string | null
 }
 
 export interface FormState {
@@ -61,4 +65,5 @@ export interface FormState {
   children: Child[]
   language: string
   parentEmail: string
+  places?: string[]
 }

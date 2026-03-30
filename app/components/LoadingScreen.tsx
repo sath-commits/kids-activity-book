@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { setBook } from '@/lib/bookStore'
 
 const MESSAGES = [
   'Packing our backpacks…',
@@ -39,6 +40,7 @@ export default function LoadingScreen() {
       destinationSlug: string
       displayName: string
       cacheHit: boolean
+      places?: string[]
     }
 
     setChildNames(form.children.map((c) => c.name))
@@ -60,6 +62,7 @@ export default function LoadingScreen() {
     destinationSlug: string
     displayName: string
     cacheHit: boolean
+    places?: string[]
   }) => {
     try {
       const res = await fetch('/api/generate-book', {
@@ -72,6 +75,7 @@ export default function LoadingScreen() {
           children: form.children,
           language: form.language,
           parentEmail: form.parentEmail,
+          places: form.places,
         }),
       })
 
@@ -82,7 +86,7 @@ export default function LoadingScreen() {
         return
       }
 
-      sessionStorage.setItem('little-explorer-book', JSON.stringify(data))
+      setBook(data)
       router.push('/preview')
     } catch {
       setError('Failed to generate your book. Please try again.')
@@ -91,17 +95,17 @@ export default function LoadingScreen() {
 
   // Progress animation
   useEffect(() => {
-    const target = cacheHit ? 95 : 85
+    const target = 90
     const interval = setInterval(() => {
       setProgress((p) => {
         if (p >= target) {
           clearInterval(interval)
           return p
         }
-        const increment = cacheHit ? 12 : 1.5
+        const increment = cacheHit ? 3 : 1
         return Math.min(p + increment, target)
       })
-    }, cacheHit ? 200 : 600)
+    }, 500)
     return () => clearInterval(interval)
   }, [cacheHit])
 
@@ -160,7 +164,7 @@ export default function LoadingScreen() {
 
         {/* Estimated time */}
         <div className="mb-6 inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
-          {cacheHit ? '⚡ Estimated wait: ~5 seconds' : '⏳ Estimated wait: ~45–60 seconds'}
+          {cacheHit ? '⏳ Up to 30 seconds' : '⏳ Up to 2 minutes'}
         </div>
 
         {/* Progress bar */}
