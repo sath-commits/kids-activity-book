@@ -1,10 +1,27 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ChildCard from './ChildCard'
 import { Child, FormState } from '@/lib/types'
 import { SUPPORTED_LANGUAGES } from '@/lib/languageCodes'
+
+interface VerifiedPlace {
+  original: string
+  found: string | null
+  notFound: boolean
+  hasSuggestion: boolean
+  geocodeQuery: string | null
+}
+
+interface VerificationState {
+  results: VerifiedPlace[]
+  displayName: string
+  slug: string
+  cacheHit: boolean
+  parsedPlaces: string[]
+  parsedGeoQueries: string[]
+}
 
 const defaultChild = (): Child => ({
   name: '',
@@ -22,10 +39,12 @@ export default function BookForm() {
   const [children, setChildren] = useState<Child[]>([defaultChild()])
   const [language, setLanguage] = useState('en')
   const [parentEmail, setParentEmail] = useState('')
+  const [disclaimerChecked, setDisclaimerChecked] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [canonicalizing, setCanonicalize] = useState(false)
   const canonicalizeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [verification, setVerification] = useState<VerificationState | null>(null)
 
   const addChild = () => {
     if (children.length < 4) setChildren((prev) => [...prev, defaultChild()])
@@ -84,13 +103,52 @@ export default function BookForm() {
         .map((p) => p.trim())
         .filter(Boolean)
 
+      if (parsedPlaces.length > 0) {
+        const verifyRes = await fetch('/api/verify-places', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ places: parsedPlaces, destination: canonData.displayName }),
+        })
+        const verifyData = await verifyRes.json()
+        const parsedGeoQueries = (verifyData.results as VerifiedPlace[]).map(r => r.geocodeQuery ?? r.found ?? r.original)
+        const hasIssues = verifyData.results?.some((r: VerifiedPlace) => r.hasSuggestion || r.notFound)
+        if (hasIssues) {
+          setVerification({
+            results: verifyData.results,
+            displayName: canonData.displayName,
+            slug: canonData.slug,
+            cacheHit: canonData.cacheHit,
+            parsedPlaces,
+            parsedGeoQueries,
+          })
+          setLoading(false)
+          return
+        }
+
+        // No issues — proceed directly with LLM-verified geo queries
+        const formState: FormState & { destinationSlug: string; displayName: string; cacheHit: boolean } = {
+          destination: canonData.displayName,
+          tripDates: tripStart && tripEnd ? { start: tripStart, end: tripEnd } : null,
+          children,
+          language,
+          parentEmail,
+          places: parsedPlaces,
+          placeGeoQueries: parsedGeoQueries,
+          destinationSlug: canonData.slug,
+          displayName: canonData.displayName,
+          cacheHit: canonData.cacheHit,
+        }
+        sessionStorage.setItem('little-explorer-form', JSON.stringify(formState))
+        router.push('/loading')
+        return
+      }
+
       const formState: FormState & { destinationSlug: string; displayName: string; cacheHit: boolean } = {
         destination: canonData.displayName,
         tripDates: tripStart && tripEnd ? { start: tripStart, end: tripEnd } : null,
         children,
         language,
         parentEmail,
-        places: parsedPlaces.length > 0 ? parsedPlaces : undefined,
         destinationSlug: canonData.slug,
         displayName: canonData.displayName,
         cacheHit: canonData.cacheHit,
@@ -102,6 +160,45 @@ export default function BookForm() {
       setError('Something went wrong. Please try again.')
       setLoading(false)
     }
+  }
+
+  const handleConfirmPlaces = async () => {
+    if (!verification) return
+    setLoading(true)
+    const correctedPlaces = verification.results.map(r => r.found ?? r.original)
+    const formState = {
+      destination: verification.displayName,
+      tripDates: tripStart && tripEnd ? { start: tripStart, end: tripEnd } : null,
+      children,
+      language,
+      parentEmail,
+      places: correctedPlaces,
+      placeGeoQueries: verification.parsedGeoQueries,
+      destinationSlug: verification.slug,
+      displayName: verification.displayName,
+      cacheHit: verification.cacheHit,
+    }
+    sessionStorage.setItem('little-explorer-form', JSON.stringify(formState))
+    router.push('/loading')
+  }
+
+  const handleProceedWithOriginal = async () => {
+    if (!verification) return
+    setLoading(true)
+    const formState = {
+      destination: verification.displayName,
+      tripDates: tripStart && tripEnd ? { start: tripStart, end: tripEnd } : null,
+      children,
+      language,
+      parentEmail,
+      places: verification.parsedPlaces,
+      placeGeoQueries: verification.parsedGeoQueries,
+      destinationSlug: verification.slug,
+      displayName: verification.displayName,
+      cacheHit: verification.cacheHit,
+    }
+    sessionStorage.setItem('little-explorer-form', JSON.stringify(formState))
+    router.push('/loading')
   }
 
   return (
@@ -254,14 +351,81 @@ export default function BookForm() {
         </div>
       )}
 
+      {/* Disclaimer */}
+      <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <input
+          type="checkbox"
+          id="disclaimer"
+          checked={disclaimerChecked}
+          onChange={(e) => setDisclaimerChecked(e.target.checked)}
+          className="mt-1 w-4 h-4 rounded border-gray-300 text-green-600 flex-shrink-0 cursor-pointer"
+          required
+        />
+        <label htmlFor="disclaimer" className="text-sm text-amber-800 leading-relaxed cursor-pointer">
+          I understand this book is AI-generated and may contain inaccuracies. I take full responsibility for reviewing the content before sharing with my children. By generating this book, I confirm I am using it at my own discretion. Little Explorer and its creators are not responsible for any actions taken based on this content. We do not store your child&apos;s personal information.
+        </label>
+      </div>
+
       {/* Submit */}
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || !disclaimerChecked}
         className="w-full py-4 px-8 rounded-2xl bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold text-lg transition-colors shadow-lg shadow-green-200"
       >
         {loading ? '🗺️ Getting started…' : '🌲 Create Our Book!'}
       </button>
+
+      {verification && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mt-4">
+          <h3 className="font-bold text-amber-800 mb-3">Verify your places</h3>
+          <p className="text-sm text-amber-700 mb-3">We looked up the places you entered. Please check these:</p>
+          <div className="space-y-2 mb-4">
+            {verification.results.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm">
+                {r.notFound ? (
+                  <>
+                    <span className="text-red-500 font-bold">?</span>
+                    <span className="text-red-700">&quot;{r.original}&quot; — couldn&apos;t find this place. Double-check the spelling.</span>
+                  </>
+                ) : r.hasSuggestion ? (
+                  <>
+                    <span className="text-amber-500 font-bold">!</span>
+                    <span className="text-gray-700">&quot;{r.original}&quot; &rarr; Did you mean <strong>&quot;{r.found}&quot;</strong>?</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-green-500 font-bold">✓</span>
+                    <span className="text-gray-700">{r.original}</span>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setVerification(null)}
+              className="flex-1 py-2 px-4 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+            >
+              Edit Places
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmPlaces}
+              className="flex-1 py-2 px-4 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 transition-colors"
+            >
+              Use Suggestions &amp; Continue
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleProceedWithOriginal}
+            className="w-full mt-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Keep my original spelling instead
+          </button>
+        </div>
+      )}
     </form>
   )
 }

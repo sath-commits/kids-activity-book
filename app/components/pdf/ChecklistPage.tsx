@@ -35,7 +35,6 @@ const s = StyleSheet.create({
     fontFamily: 'Nunito-Bold',
     fontSize: 13,
     color: colors.text,
-    flex: 1,
   },
   badgeName: {
     fontSize: 10,
@@ -52,7 +51,7 @@ const s = StyleSheet.create({
 export default function ChecklistPage({ destinationDisplayName, sections, badgeNames, pageNumber }: ChecklistPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>🗺️ Master Adventure Checklist</Text>
+      <Text style={styles.h1}>Master Adventure Checklist</Text>
       <Text style={s.intro}>
         Check each place as you visit! Complete all sections to earn your Explorer Certificate.
       </Text>
@@ -60,11 +59,10 @@ export default function ChecklistPage({ destinationDisplayName, sections, badgeN
       {sections.map((section, i) => (
         <View key={section.id} style={s.item}>
           <View style={s.checkbox} />
-          <Text style={s.emoji}>{section.emoji}</Text>
           <View style={{ flex: 1 }}>
             <Text style={s.sectionTitle}>{section.title}</Text>
             {badgeNames[i] && (
-              <Text style={s.badgeName}>🏅 {badgeNames[i]}</Text>
+              <Text style={s.badgeName}>Badge: {badgeNames[i]}</Text>
             )}
           </View>
         </View>

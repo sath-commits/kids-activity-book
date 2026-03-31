@@ -42,7 +42,10 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
 
     try {
       const arrayBuffer = await pdfBlob.arrayBuffer()
-      const base64 = Buffer.from(arrayBuffer).toString('base64')
+      const uint8 = new Uint8Array(arrayBuffer)
+      let binary = ''
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i])
+      const base64 = btoa(binary)
 
       const res = await fetch('/api/send-book', {
         method: 'POST',
@@ -89,7 +92,7 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
         </div>
 
         {/* Preview cards */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 mb-8">
           <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
             {book.coverImageB64 ? (
               <img

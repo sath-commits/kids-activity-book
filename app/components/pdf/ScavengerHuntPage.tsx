@@ -59,7 +59,7 @@ const s = StyleSheet.create({
 export default function ScavengerHuntPage({ items, destinationDisplayName, pageNumber }: ScavengerHuntPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>🔍 Scavenger Hunt</Text>
+      <Text style={styles.h1}>Scavenger Hunt</Text>
       <Text style={s.intro}>
         Can you find all of these at {destinationDisplayName}? Check the box and sketch what you found!
       </Text>

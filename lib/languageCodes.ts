@@ -5,6 +5,7 @@ export const SUPPORTED_LANGUAGES: Record<string, string> = {
   hi: 'हिन्दी',
   zh: '中文',
   pt: 'Português',
+  ta: 'தமிழ்',
 }
 
 export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES

@@ -41,6 +41,7 @@ export default function LoadingScreen() {
       displayName: string
       cacheHit: boolean
       places?: string[]
+      placeGeoQueries?: string[]
     }
 
     setChildNames(form.children.map((c) => c.name))
@@ -63,6 +64,7 @@ export default function LoadingScreen() {
     displayName: string
     cacheHit: boolean
     places?: string[]
+    placeGeoQueries?: string[]
   }) => {
     try {
       const res = await fetch('/api/generate-book', {
@@ -76,6 +78,7 @@ export default function LoadingScreen() {
           language: form.language,
           parentEmail: form.parentEmail,
           places: form.places,
+          placeGeoQueries: form.placeGeoQueries,
         }),
       })
 

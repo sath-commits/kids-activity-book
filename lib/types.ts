@@ -24,7 +24,7 @@ export interface SectionContent {
   title: string
   emoji: string
   historyBlurb: string
-  funFact: string
+  funFacts: string[]
   whatDoYouSee: string[]
   findThese: string[]
   challenge: string
@@ -33,6 +33,7 @@ export interface SectionContent {
   riddle: string
   riddleAnswer: string
   carChallenge: string | null
+  sectionScavengerHunt?: string[]
   imagePrompt: string
 }
 
@@ -42,6 +43,8 @@ export interface BookContent {
   scavengerHuntItems: string[]
   bingoGrid: string[]
   badgeNames: string[]
+  crosswordWords?: { word: string; clue: string }[]
+  sillyChallenges?: string[]
 }
 
 export interface GeneratedBook {
@@ -66,4 +69,5 @@ export interface FormState {
   language: string
   parentEmail: string
   places?: string[]
+  placeGeoQueries?: string[]
 }

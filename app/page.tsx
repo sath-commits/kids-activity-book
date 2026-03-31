@@ -57,7 +57,7 @@ export default function HomePage() {
         </div>
 
         {/* How it works */}
-        <div className="mt-10 grid grid-cols-3 gap-4 text-center">
+        <div className="mt-10 grid grid-cols-3 gap-2 sm:gap-4 text-center">
           {[
             { emoji: '📝', title: 'Fill the form', desc: 'Enter destination & explorer details' },
             { emoji: '🤖', title: 'We generate it', desc: 'AI creates your custom book in ~1 min' },

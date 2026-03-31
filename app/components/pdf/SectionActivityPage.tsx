@@ -17,10 +17,6 @@ const s = StyleSheet.create({
     borderBottomWidth: 3,
     borderBottomColor: colors.accent,
   },
-  emojiLarge: {
-    fontSize: 28,
-    marginRight: 10,
-  },
   sectionTitle: {
     fontFamily: 'Nunito-Bold',
     fontSize: 20,
@@ -48,21 +44,16 @@ const s = StyleSheet.create({
     lineHeight: 1.5,
     color: colors.text,
   },
-  funFactRow: {
+  factRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 6,
+    marginTop: 4,
   },
-  funFactStar: {
-    fontSize: 11,
-    marginRight: 5,
-    color: '#f9c922',
-  },
-  funFactText: {
+  factBullet: {
     fontSize: 10,
-    color: '#555',
-    fontStyle: 'italic',
-    flex: 1,
+    color: colors.accent,
+    marginRight: 5,
+    marginTop: 1,
   },
   sectionLabel: {
     fontFamily: 'Nunito-Bold',
@@ -90,7 +81,7 @@ const s = StyleSheet.create({
   },
   checkText: {
     fontSize: 10.5,
-    flex: 1,
+    flexShrink: 1,
     lineHeight: 1.4,
   },
   challengeBox: {
@@ -100,8 +91,6 @@ const s = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#f9c922',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   carBox: {
     backgroundColor: '#e8f4fd',
@@ -110,8 +99,6 @@ const s = StyleSheet.create({
     marginTop: 6,
     borderWidth: 1,
     borderColor: '#90caf9',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   thinkBox: {
     backgroundColor: '#f3e8ff',
@@ -120,8 +107,6 @@ const s = StyleSheet.create({
     marginTop: 6,
     borderWidth: 1,
     borderColor: '#c084fc',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   riddleBox: {
     backgroundColor: '#fff7ed',
@@ -130,8 +115,6 @@ const s = StyleSheet.create({
     marginTop: 6,
     borderWidth: 1,
     borderColor: '#fb923c',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
   },
   personBox: {
     backgroundColor: '#fff0f3',
@@ -141,20 +124,14 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ffb3c1',
   },
-  boxIcon: {
-    fontSize: 13,
-    marginRight: 7,
-    marginTop: 0,
-  },
   boxText: {
     fontSize: 10.5,
-    flex: 1,
     lineHeight: 1.4,
   },
   boxLabel: {
     fontFamily: 'Nunito-Bold',
     fontSize: 9.5,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   drawingBox: {
     borderWidth: 1.5,
@@ -186,24 +163,25 @@ export default function SectionActivityPage({ section, childPersonalization, pag
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={s.header}>
-        <Text style={s.emojiLarge}>{section.emoji}</Text>
         <Text style={s.sectionTitle}>{section.title}</Text>
       </View>
 
       {/* Did You Know */}
       <View style={s.didYouKnow}>
-        <Text style={s.didYouKnowLabel}>📚 Did You Know?</Text>
+        <Text style={s.didYouKnowLabel}>Did You Know?</Text>
         <Text style={s.historyText}>{section.historyBlurb}</Text>
-        <View style={s.funFactRow}>
-          <Text style={s.funFactStar}>⭐</Text>
-          <Text style={s.funFactText}>Fun fact: {section.funFact}</Text>
-        </View>
+        {section.funFacts?.map((fact, i) => (
+          <View key={i} style={s.factRow}>
+            <Text style={s.factBullet}>•</Text>
+            <Text style={s.historyText}>{fact}</Text>
+          </View>
+        ))}
       </View>
 
       <View style={s.twoCol}>
         {/* Left column */}
         <View style={s.col}>
-          <Text style={s.sectionLabel}>👀 What Do You See?</Text>
+          <Text style={s.sectionLabel}>What Do You See?</Text>
           {section.whatDoYouSee.map((item, i) => (
             <View key={i} style={s.checkRow}>
               <View style={s.checkBox} />
@@ -214,8 +192,8 @@ export default function SectionActivityPage({ section, childPersonalization, pag
 
         {/* Right column */}
         <View style={s.col}>
-          <Text style={s.sectionLabel}>🔍 Find These!</Text>
-          {section.findThese.map((item, i) => (
+          <Text style={s.sectionLabel}>Scavenger Hunt!</Text>
+          {(section.sectionScavengerHunt ?? section.findThese).map((item, i) => (
             <View key={i} style={s.checkRow}>
               <View style={s.checkBox} />
               <Text style={s.checkText}>{item}</Text>
@@ -226,44 +204,32 @@ export default function SectionActivityPage({ section, childPersonalization, pag
 
       {/* Challenge */}
       <View style={s.challengeBox}>
-        <Text style={s.boxIcon}>⭐</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.boxLabel, { color: '#b45309' }]}>Explorer Challenge</Text>
-          <Text style={s.boxText}>{section.challenge}</Text>
-        </View>
+        <Text style={[s.boxLabel, { color: '#b45309' }]}>Explorer Challenge</Text>
+        <Text style={s.boxText}>{section.challenge}</Text>
       </View>
 
       {/* Car challenge */}
       {section.carChallenge && (
         <View style={s.carBox}>
-          <Text style={s.boxIcon}>🚗</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.boxLabel, { color: '#1565c0' }]}>Car Challenge</Text>
-            <Text style={s.boxText}>{section.carChallenge}</Text>
-          </View>
+          <Text style={[s.boxLabel, { color: '#1565c0' }]}>Car Challenge</Text>
+          <Text style={s.boxText}>{section.carChallenge}</Text>
         </View>
       )}
 
       {/* Think question */}
       <View style={s.thinkBox}>
-        <Text style={s.boxIcon}>💡</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[s.boxLabel, { color: '#7b2d8b' }]}>Think About It</Text>
-          <Text style={s.boxText}>{section.thinkQuestion}</Text>
-        </View>
+        <Text style={[s.boxLabel, { color: '#7b2d8b' }]}>Think About It</Text>
+        <Text style={s.boxText}>{section.thinkQuestion}</Text>
       </View>
 
       {/* Riddle */}
       {section.riddle && (
         <View style={s.riddleBox}>
-          <Text style={s.boxIcon}>🧩</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.boxLabel, { color: '#c2410c' }]}>Riddle Time!</Text>
-            <Text style={s.boxText}>{section.riddle}</Text>
-            <Text style={[s.boxText, { color: '#9a3412', fontSize: 9, marginTop: 3 }]}>
-              (Answer in the answer key at the back!)
-            </Text>
-          </View>
+          <Text style={[s.boxLabel, { color: '#c2410c' }]}>Riddle Time!</Text>
+          <Text style={s.boxText}>{section.riddle}</Text>
+          <Text style={[s.boxText, { color: '#9a3412', fontSize: 9, marginTop: 3 }]}>
+            (Answer in the answer key at the back!)
+          </Text>
         </View>
       )}
 
@@ -271,17 +237,12 @@ export default function SectionActivityPage({ section, childPersonalization, pag
       {childPersonalization.personalizedChallengeNote && (
         <View style={s.personBox}>
           <Text style={[s.boxLabel, { color: '#c2185b' }]}>
-            🌟 Special Challenge for {childPersonalization.name}!
+            Special Challenge for {childPersonalization.name}!
           </Text>
           <Text style={[s.boxText, { color: '#333' }]}>{childPersonalization.personalizedChallengeNote}</Text>
         </View>
       )}
 
-      {/* Drawing box */}
-      <View style={s.drawingBox}>
-        <Text style={s.drawingPrompt}>✏️ Draw it!</Text>
-        <Text style={s.drawingPrompt}>{childPersonalization.personalizedDrawingPrompt || 'Draw something amazing you saw here!'}</Text>
-      </View>
 
       <View style={styles.footer}>
         <Text>Little Explorer · builtthisweekend.com</Text>

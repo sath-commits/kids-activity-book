@@ -11,129 +11,103 @@ interface CoverPageProps {
 
 const s = StyleSheet.create({
   page: {
-    backgroundColor: colors.pageBackground,
+    backgroundColor: colors.primary,
+    padding: 0,
     fontFamily: 'Nunito',
-    position: 'relative',
   },
   bgImage: {
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.12,
+    width: '100%',
+    height: '100%',
   },
-  topSection: {
-    padding: 40,
+  topOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a4731',
+    paddingHorizontal: 28,
+    paddingTop: 24,
     paddingBottom: 20,
-    zIndex: 1,
   },
   badge: {
-    backgroundColor: colors.accent,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    marginBottom: 16,
+    backgroundColor: '#52b788',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     alignSelf: 'flex-start',
+    marginBottom: 10,
   },
   badgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 8,
     fontFamily: 'Nunito-Bold',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
-  title: {
+  destinationName: {
     fontFamily: 'Nunito-Bold',
-    fontSize: 32,
-    color: colors.primary,
-    lineHeight: 1.2,
-    marginBottom: 8,
+    fontSize: 28,
+    color: '#ffffff',
+    lineHeight: 1.15,
+    marginBottom: 4,
   },
   subtitle: {
     fontFamily: 'Nunito-Bold',
-    fontSize: 18,
-    color: '#333',
-    marginBottom: 20,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 12,
   },
-  border: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    right: 12,
-    bottom: 12,
-    borderWidth: 4,
-    borderColor: colors.accent,
-    borderRadius: 16,
-  },
-  childRow: {
+  explorersRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 12,
+    gap: 6,
   },
-  childChip: {
-    backgroundColor: colors.light,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginRight: 8,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+  explorerChip: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  childName: {
+  explorerName: {
     fontFamily: 'Nunito-Bold',
-    fontSize: 12,
-    color: colors.primary,
-  },
-  childAge: {
     fontSize: 10,
-    color: colors.muted,
-    marginLeft: 4,
+    color: '#ffffff',
+  },
+  explorerAge: {
+    fontSize: 8,
+    color: 'rgba(255,255,255,0.7)',
   },
   dates: {
-    fontSize: 11,
-    color: colors.muted,
-    marginTop: 8,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 10,
   },
-  bottomImage: {
-    flex: 1,
-    margin: 20,
-    marginTop: 0,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  img: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-  },
-  footer: {
-    padding: 20,
-    paddingTop: 8,
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a4731',
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 9,
-    color: colors.muted,
+    fontSize: 8,
+    color: 'rgba(255,255,255,0.5)',
   },
 })
 
-const genderEmoji = (gender: string) => {
-  if (gender === 'girl') return '👧'
-  if (gender === 'boy') return '🧒'
-  return '🌟'
-}
-
 export default function CoverPage({ destinationDisplayName, explorers, tripDates, coverImageB64 }: CoverPageProps) {
-  const namesDisplay =
-    explorers.length === 1
-      ? `${explorers[0].name}'s Adventure Book`
-      : `${explorers.map((c) => c.name).slice(0, -1).join(', ')} & ${explorers[explorers.length - 1].name}'s Adventure Book`
-
   return (
     <Page size="A4" style={s.page}>
-      <View style={s.border} />
-
+      {/* Background image */}
       {coverImageB64 && (
         <Image
           style={s.bgImage}
@@ -141,39 +115,30 @@ export default function CoverPage({ destinationDisplayName, explorers, tripDates
         />
       )}
 
-      <View style={s.topSection}>
+      {/* Top text overlay */}
+      <View style={s.topOverlay}>
         <View style={s.badge}>
-          <Text style={s.badgeText}>🌲 JUNIOR EXPLORER</Text>
+          <Text style={s.badgeText}>JUNIOR EXPLORER</Text>
         </View>
-
-        <Text style={s.title}>{destinationDisplayName}</Text>
+        <Text style={s.destinationName}>{destinationDisplayName}</Text>
         <Text style={s.subtitle}>Adventure Book</Text>
-
-        <View style={s.childRow}>
+        <View style={s.explorersRow}>
           {explorers.map((child) => (
-            <View key={child.name} style={s.childChip}>
-              <Text style={s.childName}>{genderEmoji(child.gender)} {child.name}</Text>
-              <Text style={s.childAge}>age {child.age}</Text>
+            <View key={child.name} style={s.explorerChip}>
+              <Text style={s.explorerName}>{child.name}</Text>
+              <Text style={s.explorerAge}>age {child.age}</Text>
             </View>
           ))}
         </View>
-
         {tripDates && (
-          <Text style={s.dates}>📅 {tripDates.start} – {tripDates.end}</Text>
+          <Text style={s.dates}>{tripDates.start} - {tripDates.end}</Text>
         )}
       </View>
 
-      {coverImageB64 && (
-        <View style={s.bottomImage}>
-          <Image
-            style={s.img}
-            src={`data:image/png;base64,${coverImageB64}`}
-          />
-        </View>
-      )}
-
-      <View style={s.footer}>
-        <Text style={s.footerText}>Little Explorer · builtthisweekend.com</Text>
+      {/* Bottom footer overlay */}
+      <View style={s.bottomOverlay}>
+        <Text style={s.footerText}>Little Explorer</Text>
+        <Text style={s.footerText}>builtthisweekend.com</Text>
       </View>
     </Page>
   )

@@ -9,10 +9,16 @@ import SectionActivityPage from './SectionActivityPage'
 import SectionColoringPage from './SectionColoringPage'
 import ScavengerHuntPage from './ScavengerHuntPage'
 import BingoPage from './BingoPage'
+import CrosswordPage from './CrosswordPage'
 import BadgesPage from './BadgesPage'
 import CertificatePage from './CertificatePage'
 import AnswerKeyPage from './AnswerKeyPage'
 import MapPage from './MapPage'
+import WordSearchPage from './WordSearchPage'
+import SillyChallengesPage from './SillyChallengesPage'
+import SectionJournalPage from './SectionJournalPage'
+import { buildCrossword } from '@/lib/crossword'
+import { buildWordSearch } from '@/lib/wordSearch'
 
 // Register fonts
 Font.register({
@@ -44,6 +50,28 @@ export default function BookPDF({ book }: BookPDFProps) {
   const hasMap = !!mapImageB64 && Array.isArray(places) && places.length > 0
   const mapOffset = hasMap ? 1 : 0
 
+  const crossword = content.crosswordWords ? buildCrossword(content.crosswordWords) : null
+  const crosswordOffset = crossword && crossword.placedWords.length > 0 ? 1 : 0
+
+  const wordSearch = content.crosswordWords && content.crosswordWords.length > 0
+    ? buildWordSearch(content.crosswordWords.map(w => w.word))
+    : null
+  const wordSearchOffset = wordSearch && wordSearch.placedWords.length > 0 ? 1 : 0
+
+  // Second word search using section titles and badge names as words
+  const wordSearch2Words = [
+    ...sections.map(s => s.title.split(/\s+/)).flat(),
+    ...(badgeNames ?? []).map(b => b.split(/\s+/)[0]),
+  ].map(w => w.toUpperCase().replace(/[^A-Z]/g, '')).filter(w => w.length >= 3 && w.length <= 12)
+
+  const wordSearch2 = wordSearch2Words.length >= 4
+    ? buildWordSearch(wordSearch2Words)
+    : null
+  const wordSearch2Offset = wordSearch2 && wordSearch2.placedWords.length > 0 ? 1 : 0
+
+  const hasSillyChallenges = Array.isArray(content.sillyChallenges) && content.sillyChallenges.length > 0
+  const sillyChallengesOffset = hasSillyChallenges ? 1 : 0
+
   return (
     <Document
       title={`${destinationDisplayName} Junior Explorer Adventure`}
@@ -66,6 +94,7 @@ export default function BookPDF({ book }: BookPDFProps) {
           destinationDisplayName={destinationDisplayName}
           places={places!}
           mapImageB64={mapImageB64!}
+          destinationIntro={content.destinationIntro}
           pageNumber={3}
         />
       )}
@@ -78,13 +107,14 @@ export default function BookPDF({ book }: BookPDFProps) {
         pageNumber={3 + mapOffset}
       />
 
-      {/* Sections: activity + coloring page pairs */}
+      {/* Sections: activity + coloring + journal page triples */}
       {sections.flatMap((section, i) => {
         const childIdx = i % childPersonalization.length
         const child = childPersonalization[childIdx]
         const imageB64 = sectionImagesB64?.[i] ?? null
-        const activityPageNum = 4 + mapOffset + i * 2
+        const activityPageNum = 4 + mapOffset + i * 3
         const coloringPageNum = activityPageNum + 1
+        const journalPageNum = activityPageNum + 2
         return [
           <SectionActivityPage
             key={`activity-${section.id}`}
@@ -98,6 +128,11 @@ export default function BookPDF({ book }: BookPDFProps) {
             imageB64={imageB64}
             pageNumber={coloringPageNum}
           />,
+          <SectionJournalPage
+            key={`journal-${section.id}`}
+            sectionTitle={section.title}
+            pageNumber={journalPageNum}
+          />,
         ]
       })}
 
@@ -105,21 +140,56 @@ export default function BookPDF({ book }: BookPDFProps) {
       <ScavengerHuntPage
         items={scavengerHuntItems}
         destinationDisplayName={destinationDisplayName}
-        pageNumber={4 + mapOffset + sections.length * 2}
+        pageNumber={4 + mapOffset + sections.length * 3}
       />
 
       {/* Bingo */}
       <BingoPage
         gridItems={bingoGrid}
         destinationDisplayName={destinationDisplayName}
-        pageNumber={5 + mapOffset + sections.length * 2}
+        pageNumber={5 + mapOffset + sections.length * 3}
       />
+
+      {/* Crossword */}
+      {crossword && crossword.placedWords.length > 0 && (
+        <CrosswordPage
+          crossword={crossword}
+          pageNumber={6 + mapOffset + sections.length * 3}
+        />
+      )}
+
+      {/* Word Search */}
+      {wordSearch && wordSearch.placedWords.length > 0 && (
+        <WordSearchPage
+          wordSearch={wordSearch}
+          destinationDisplayName={destinationDisplayName}
+          pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset}
+        />
+      )}
+
+      {/* Word Search 2 */}
+      {wordSearch2 && wordSearch2.placedWords.length > 0 && (
+        <WordSearchPage
+          wordSearch={wordSearch2}
+          destinationDisplayName={destinationDisplayName}
+          pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset}
+        />
+      )}
+
+      {/* Silly Challenges */}
+      {hasSillyChallenges && (
+        <SillyChallengesPage
+          challenges={content.sillyChallenges!}
+          destinationDisplayName={destinationDisplayName}
+          pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
+        />
+      )}
 
       {/* Badges */}
       <BadgesPage
         sections={sections}
         badgeNames={badgeNames}
-        pageNumber={6 + mapOffset + sections.length * 2}
+        pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset}
       />
 
       {/* Certificates — one per child */}
@@ -128,14 +198,14 @@ export default function BookPDF({ book }: BookPDFProps) {
           key={`cert-${child.name}`}
           child={child}
           destinationDisplayName={destinationDisplayName}
-          pageNumber={7 + mapOffset + sections.length * 2 + i}
+          pageNumber={7 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + i}
         />
       ))}
 
       {/* Answer Key */}
       <AnswerKeyPage
         sections={sections}
-        pageNumber={7 + mapOffset + sections.length * 2 + childPersonalization.length}
+        pageNumber={7 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + childPersonalization.length}
       />
     </Document>
   )

@@ -35,7 +35,7 @@ export interface SectionContent {
   title: string
   emoji: string
   historyBlurb: string
-  funFact: string
+  funFacts: string[]
   whatDoYouSee: string[]
   findThese: string[]
   challenge: string
@@ -51,4 +51,5 @@ export interface BookContent {
   scavengerHuntItems: string[]
   bingoGrid: string[]
   badgeNames: string[]
+  crosswordWords?: { word: string; clue: string }[]
 }

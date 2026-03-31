@@ -82,7 +82,7 @@ export default function OathPage() {
   return (
     <Page size="A4" style={styles.page}>
       <View style={s.content}>
-        <Text style={[styles.h1, { textAlign: 'center' }]}>🌿 Junior Explorer Oath</Text>
+        <Text style={[styles.h1, { textAlign: 'center' }]}>Junior Explorer Oath</Text>
         <Text style={s.intro}>Before your adventure begins, make your promise as a Junior Explorer:</Text>
 
         <View style={s.oathBox}>

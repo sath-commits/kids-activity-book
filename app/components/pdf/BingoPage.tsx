@@ -77,7 +77,7 @@ export default function BingoPage({ gridItems, destinationDisplayName, pageNumbe
 
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>🎯 Adventure Bingo!</Text>
+      <Text style={styles.h1}>Adventure Bingo!</Text>
       <Text style={s.intro}>
         Find 5 things in a row — across, down, or diagonally — to win! Look for these at {destinationDisplayName}.
       </Text>
@@ -88,7 +88,7 @@ export default function BingoPage({ gridItems, destinationDisplayName, pageNumbe
             {row.map((cell, ci) => (
               <View key={ci} style={cell === null ? s.freeCell : s.cell}>
                 {cell === null ? (
-                  <Text style={s.freeCellText}>⭐{'\n'}FREE{'\n'}SPACE</Text>
+                  <Text style={s.freeCellText}>FREE{'\n'}SPACE</Text>
                 ) : (
                   <Text style={s.cellText}>{cell}</Text>
                 )}

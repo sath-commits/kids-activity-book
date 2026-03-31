@@ -44,18 +44,18 @@ const s = StyleSheet.create({
 export default function AnswerKeyPage({ sections, pageNumber }: AnswerKeyPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>📖 Answer Key</Text>
+      <Text style={styles.h1}>Answer Key</Text>
       <Text style={s.intro}>For parents and rangers — answers to the "Think About It" questions:</Text>
 
       <View style={s.grid}>
         {sections.map((section) => (
           <View key={section.id} style={s.item}>
-            <Text style={s.sectionTitle}>{section.emoji} {section.title}</Text>
+            <Text style={s.sectionTitle}>{section.title}</Text>
             <Text style={s.question}>Think: {section.thinkQuestion}</Text>
             <Text style={s.answer}>A: {section.thinkQuestionAnswer}</Text>
             {section.riddle && (
               <View>
-                <Text style={[s.question, { marginTop: 4 }]}>🧩 Riddle: {section.riddle}</Text>
+                <Text style={[s.question, { marginTop: 4 }]}>Riddle: {section.riddle}</Text>
                 <Text style={s.answer}>A: {section.riddleAnswer}</Text>
               </View>
             )}

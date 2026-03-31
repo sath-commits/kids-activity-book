@@ -1,4 +1,4 @@
-import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { Page, View, Text, StyleSheet, Svg, Path } from '@react-pdf/renderer'
 import { ChildPersonalization } from '@/lib/types'
 import { colors, styles } from './pdfStyles'
 
@@ -42,8 +42,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  badgeEmoji: {
-    fontSize: 30,
+  badgeIcon: {
+    width: 44,
+    height: 44,
   },
   certTitle: {
     fontFamily: 'Nunito-Bold',
@@ -124,7 +125,12 @@ export default function CertificatePage({ child, destinationDisplayName, pageNum
         <View style={s.inner}>
           <View style={s.badge}>
             <View style={s.badgeCircle}>
-              <Text style={s.badgeEmoji}>🏆</Text>
+              <Svg width="44" height="44" viewBox="0 0 44 44">
+                <Path
+                  d="M22 3 L26.8 15.5 L40 15.5 L29.5 23.5 L33.7 36 L22 28.5 L10.3 36 L14.5 23.5 L4 15.5 L17.2 15.5 Z"
+                  fill={colors.accent}
+                />
+              </Svg>
             </View>
             <Text style={s.certTitle}>Certificate of Completion</Text>
           </View>

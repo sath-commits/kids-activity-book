@@ -6,6 +6,7 @@ interface MapPageProps {
   places: string[]
   mapImageB64: string
   pageNumber: number
+  destinationIntro?: string
 }
 
 const s = StyleSheet.create({
@@ -47,13 +48,19 @@ const s = StyleSheet.create({
   },
 })
 
-export default function MapPage({ destinationDisplayName, places, mapImageB64, pageNumber }: MapPageProps) {
+export default function MapPage({ destinationDisplayName, places, mapImageB64, pageNumber, destinationIntro }: MapPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>🗺️ Your Adventure Map</Text>
+      <Text style={styles.h1}>Your Adventure Map</Text>
       <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12 }}>
         Here are all the amazing places you&apos;ll explore at {destinationDisplayName}!
       </Text>
+
+      {destinationIntro && (
+        <Text style={{ fontSize: 10, color: colors.text, marginBottom: 10, lineHeight: 1.5, fontStyle: 'italic' }}>
+          {destinationIntro}
+        </Text>
+      )}
 
       <Image
         style={s.mapImage}
