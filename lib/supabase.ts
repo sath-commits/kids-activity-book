@@ -4,7 +4,9 @@ let _client: SupabaseClient | null = null
 
 export function getSupabase(): SupabaseClient {
   if (!_client) {
-    _client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+    // Use service role key server-side so writes bypass RLS (key is never sent to browser)
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY!
+    _client = createClient(process.env.SUPABASE_URL!, key)
   }
   return _client
 }

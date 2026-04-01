@@ -88,7 +88,7 @@ Return a JSON object with this exact schema (no markdown, no code fences, pure J
       "riddle": "A fun kid-friendly riddle about something you'd find at this location (e.g. 'I have needles but I don't sew. What am I?')",
       "riddleAnswer": "The answer to the riddle",
       "carChallenge": "A car/travel challenge for if this section involves a drive (null if not applicable)",
-      "imagePrompt": "DALL-E prompt for a SIMPLE children's coloring page of this place. Describe a clean, uncluttered scene with 2-3 key elements max (e.g. one large tree, a mountain peak, a child looking at the view). Use simple shapes. Avoid dense forests, crowds, or complex textures. Do not mention color or shading — just describe the subject simply as if explaining what to outline.",
+      "imagePrompt": "DALL-E prompt for a SIMPLE children's coloring page of this specific place. Be culturally and architecturally accurate — a Hindu temple must say 'Hindu temple with gopuram tower', a Buddhist temple must say 'Buddhist pagoda', a mosque must say 'mosque with minaret'. Describe a clean, uncluttered scene with 2-3 key elements max (e.g. one large tree, a mountain peak, a child looking at the view). Use simple shapes. Avoid dense forests, crowds, or complex textures. Do not mention color or shading — just describe the subject simply as if explaining what to outline.",
       "crosswordClues": [{"word": "UPPERCASE_WORD", "clue": "Kid-friendly clue for this word (1 sentence)"}]
     }
   ],
@@ -115,16 +115,8 @@ ${sectionsInstruction} Badge names array must have the same length as sections a
   }
 }
 
-async function generateCoverImage(displayName: string, children: Child[]): Promise<string | null> {
-  const childDescriptions = children.map((c) => `a ${c.age}-year-old ${c.gender}`)
-  const kidsDesc =
-    childDescriptions.length === 1
-      ? childDescriptions[0]
-      : childDescriptions.length === 2
-        ? `${childDescriptions[0]} and ${childDescriptions[1]}`
-        : `${childDescriptions.slice(0, -1).join(', ')}, and ${childDescriptions[childDescriptions.length - 1]}`
-
-  const prompt = `Children's illustrated adventure book cover, full color, vibrant, warm, cartoon style similar to a children's picture book: A cheerful landscape scene of ${displayName} with iconic landmarks and natural features beautifully depicted in the background. In the foreground, ${kidsDesc} wearing colorful outdoor gear and backpacks, smiling and excited. Style: bright saturated colors, friendly rounded cartoon illustration, rich detailed background showing the destination's key scenery. Leave the top 20% of the image as open sky area for a title banner overlay.`
+async function generateCoverImage(displayName: string): Promise<string | null> {
+  const prompt = `Children's illustrated adventure book cover, full color, vibrant, warm, cartoon style similar to a children's picture book: A cheerful landscape scene of ${displayName} with iconic landmarks and natural features beautifully depicted. Style: bright saturated colors, friendly rounded cartoon illustration, rich detailed background showing the destination's key scenery. Leave the top 20% of the image as open sky area for a title banner overlay.`
 
   try {
     const result = await getOpenAI().images.generate({
@@ -144,7 +136,7 @@ async function generateCoverImage(displayName: string, children: Child[]): Promi
 async function generateSectionImages(displayName: string, content: BookContent): Promise<(string | null)[]> {
   const sectionPrompts = content.sections.map(
     (s) =>
-      `Children's coloring book page for ages 4-10. STYLE: simple flat cartoon line art, bold black outlines only, pure white background, absolutely zero gray shading, zero crosshatching, zero fills, zero gradients, zero dark areas. Every region must be left as empty white space ready to be colored in by a child. Think very simple thick-outlined cartoon, NOT a realistic illustration. SCENE: ${s.imagePrompt}`
+      `Children's coloring book page for ages 4-10. STYLE: simple flat cartoon line art, bold black outlines only, pure white background, absolutely zero gray shading, zero crosshatching, zero fills, zero gradients, zero dark areas. Every region must be left as empty white space ready to be colored in by a child. Think very simple thick-outlined cartoon, NOT a realistic illustration. SUBJECT: This page is specifically about "${s.title}" located at ${displayName}. Draw ONLY what is authentically found at this exact place — the architecture, landscape, or wildlife must be accurate to "${s.title}". For example, a Hindu temple must show gopuram towers and carved stonework, NOT a mosque or church; a cave must show cave interiors, NOT an exterior building. SCENE: ${s.imagePrompt}`
   )
 
   const results = await Promise.allSettled(
@@ -292,6 +284,7 @@ export async function POST(req: NextRequest) {
 
   let content: BookContent
   let sectionImagesB64: (string | null)[]
+  let coverImageB64: string | null = null
   let cacheHit = false
 
   let placeCoords: ([number, number] | null)[] | undefined
@@ -323,15 +316,30 @@ export async function POST(req: NextRequest) {
       }
       sectionImagesB64 = cached.section_images_b64 as unknown as (string | null)[]
 
-      // Increment hit_count
-      await getSupabase()
-        .from('destination_cache')
-        .update({ hit_count: (cached.hit_count ?? 0) + 1 })
-        .eq('destination_slug', cached.destination_slug)
+      const cachedCover = (cached as DestinationCache & { cover_image_b64?: string }).cover_image_b64
+      if (cachedCover) {
+        // Reuse cached cover — no DALL-E call needed
+        coverImageB64 = cachedCover
+        // Increment hit_count only
+        await getSupabase()
+          .from('destination_cache')
+          .update({ hit_count: (cached.hit_count ?? 0) + 1 })
+          .eq('destination_slug', cached.destination_slug)
+      } else {
+        // Cover was never generated for this cache entry — generate and save it now
+        coverImageB64 = await generateCoverImage(destinationDisplayName)
+        await getSupabase()
+          .from('destination_cache')
+          .update({ cover_image_b64: coverImageB64 ?? '', hit_count: (cached.hit_count ?? 0) + 1 })
+          .eq('destination_slug', cached.destination_slug)
+      }
     } else {
-      // Generate content
+      // Generate content + images in parallel
       content = await generateDestinationContent(destinationDisplayName)
-      sectionImagesB64 = await generateSectionImages(destinationDisplayName, content)
+      ;[sectionImagesB64, coverImageB64] = await Promise.all([
+        generateSectionImages(destinationDisplayName, content),
+        generateCoverImage(destinationDisplayName),
+      ])
 
       // Translate if needed
       const languageNames: Record<string, string> = {
@@ -346,14 +354,14 @@ export async function POST(req: NextRequest) {
         content = await translateContent(content, language, languageNames[language])
       }
 
-      // Save to Supabase (cover not cached)
+      // Save to Supabase including cover image
       const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
       await getSupabase().from('destination_cache').upsert({
         destination_slug: cacheSlug,
         destination_display_name: destinationDisplayName,
         destination_intro: content.destinationIntro,
         sections_json: content.sections,
-        cover_image_b64: '',
+        cover_image_b64: coverImageB64 ?? '',
         section_images_b64: sectionImagesB64,
         scavenger_hunt_json: content.scavengerHuntItems,
         bingo_grid_json: content.bingoGrid,
@@ -366,12 +374,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Cover image + child personalization + map (if itinerary) — all in parallel
-  const [coverImageB64, childPersonalization, mapImageB64] = await Promise.all([
-    generateCoverImage(destinationDisplayName, children),
+  // Child personalization + map (if itinerary) — cover already handled above
+  const [childPersonalization, mapImageB64] = await Promise.all([
     personalizeChildren(children, destinationDisplayName),
     hasItinerary ? generateMapImage(places!, placeCoords!) : Promise.resolve(null),
   ])
+
+  // Itinerary books always get a fresh cover (custom per trip)
+  if (hasItinerary) {
+    coverImageB64 = await generateCoverImage(destinationDisplayName)
+  }
 
   return NextResponse.json({
     destinationDisplayName,
