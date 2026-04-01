@@ -16,8 +16,9 @@ const s = StyleSheet.create({
     borderStyle: 'dashed',
     height: 260,
     marginBottom: 16,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    paddingTop: 10,
   },
   drawingPrompt: {
     fontSize: 11,

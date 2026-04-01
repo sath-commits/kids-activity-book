@@ -1,5 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
+import MascotSvg from './MascotSvg'
 
 interface ScavengerHuntPageProps {
   items: string[]
@@ -59,7 +60,11 @@ const s = StyleSheet.create({
 export default function ScavengerHuntPage({ items, destinationDisplayName, pageNumber }: ScavengerHuntPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>Scavenger Hunt</Text>
+      <View style={[styles.pageBand, { backgroundColor: colors.teal }]} />
+      <View style={{ position: 'absolute', top: 28, right: 28 }}>
+        <MascotSvg size={58} />
+      </View>
+      <Text style={[styles.h1, { color: colors.teal }]}>Scavenger Hunt</Text>
       <Text style={s.intro}>
         Can you find all of these at {destinationDisplayName}? Check the box and sketch what you found!
       </Text>

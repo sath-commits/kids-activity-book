@@ -17,8 +17,11 @@ import MapPage from './MapPage'
 import WordSearchPage from './WordSearchPage'
 import SillyChallengesPage from './SillyChallengesPage'
 import SectionJournalPage from './SectionJournalPage'
+import ConnectDotsPage from './ConnectDotsPage'
+import MazePage from './MazePage'
 import { buildCrossword } from '@/lib/crossword'
 import { buildWordSearch } from '@/lib/wordSearch'
+import { hashStr } from '@/lib/maze'
 
 // Register fonts
 Font.register({
@@ -68,6 +71,8 @@ export default function BookPDF({ book }: BookPDFProps) {
     ? buildWordSearch(wordSearch2Words)
     : null
   const wordSearch2Offset = wordSearch2 && wordSearch2.placedWords.length > 0 ? 1 : 0
+
+  const mazeSeed = hashStr(destinationDisplayName)
 
   const hasSillyChallenges = Array.isArray(content.sillyChallenges) && content.sillyChallenges.length > 0
   const sillyChallengesOffset = hasSillyChallenges ? 1 : 0
@@ -176,12 +181,32 @@ export default function BookPDF({ book }: BookPDFProps) {
         />
       )}
 
+      {/* Connect the Dots */}
+      <ConnectDotsPage
+        destinationDisplayName={destinationDisplayName}
+        pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
+      />
+
+      {/* Maze 1 */}
+      <MazePage
+        seed={mazeSeed}
+        mazeIndex={1}
+        pageNumber={7 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
+      />
+
+      {/* Maze 2 */}
+      <MazePage
+        seed={mazeSeed}
+        mazeIndex={2}
+        pageNumber={8 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
+      />
+
       {/* Silly Challenges */}
       {hasSillyChallenges && (
         <SillyChallengesPage
           challenges={content.sillyChallenges!}
           destinationDisplayName={destinationDisplayName}
-          pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
+          pageNumber={9 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset}
         />
       )}
 
@@ -189,7 +214,7 @@ export default function BookPDF({ book }: BookPDFProps) {
       <BadgesPage
         sections={sections}
         badgeNames={badgeNames}
-        pageNumber={6 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset}
+        pageNumber={9 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset}
       />
 
       {/* Certificates — one per child */}
@@ -198,14 +223,14 @@ export default function BookPDF({ book }: BookPDFProps) {
           key={`cert-${child.name}`}
           child={child}
           destinationDisplayName={destinationDisplayName}
-          pageNumber={7 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + i}
+          pageNumber={10 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + i}
         />
       ))}
 
       {/* Answer Key */}
       <AnswerKeyPage
         sections={sections}
-        pageNumber={7 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + childPersonalization.length}
+        pageNumber={10 + mapOffset + sections.length * 3 + crosswordOffset + wordSearchOffset + wordSearch2Offset + sillyChallengesOffset + childPersonalization.length}
       />
     </Document>
   )

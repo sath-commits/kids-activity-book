@@ -1,6 +1,7 @@
 import { Page, View, Text, StyleSheet, Svg, Path } from '@react-pdf/renderer'
 import { ChildPersonalization } from '@/lib/types'
 import { colors, styles } from './pdfStyles'
+import MascotSvg from './MascotSvg'
 
 interface CertificatePageProps {
   child: ChildPersonalization
@@ -17,9 +18,10 @@ const s = StyleSheet.create({
   },
   outer: {
     borderWidth: 4,
-    borderColor: colors.accent,
+    borderColor: colors.gold,
     borderRadius: 16,
     padding: 30,
+    backgroundColor: '#fffbf0',
   },
   inner: {
     borderWidth: 1.5,
@@ -49,7 +51,7 @@ const s = StyleSheet.create({
   certTitle: {
     fontFamily: 'Nunito-Bold',
     fontSize: 13,
-    color: colors.primary,
+    color: colors.gold,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -121,6 +123,14 @@ export default function CertificatePage({ child, destinationDisplayName, pageNum
 
   return (
     <Page size="A4" style={s.page}>
+      <View style={[styles.pageBand, { backgroundColor: colors.gold }]} />
+      {/* Mascot pair — left and right corners */}
+      <View style={{ position: 'absolute', top: 28, left: 28 }}>
+        <MascotSvg size={55} />
+      </View>
+      <View style={{ position: 'absolute', top: 28, right: 28 }}>
+        <MascotSvg size={55} />
+      </View>
       <View style={s.outer}>
         <View style={s.inner}>
           <View style={s.badge}>

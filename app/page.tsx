@@ -1,4 +1,5 @@
 import BookForm from './components/BookForm'
+import MascotSvg from './components/MascotSvg'
 
 export const metadata = {
   title: 'Little Explorer — Personalized Activity Books for Kids',
@@ -11,8 +12,8 @@ export default function HomePage() {
     <main className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       {/* Header */}
       <div className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <span className="text-3xl">🌲</span>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          <MascotSvg size={52} />
           <div>
             <h1 className="font-bold text-green-800 text-lg leading-tight">Little Explorer</h1>
             <p className="text-xs text-gray-400">builtthisweekend.com</p>
@@ -23,6 +24,14 @@ export default function HomePage() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Hero */}
         <div className="text-center mb-10">
+          <div className="flex justify-center mb-4">
+            <div className="relative inline-block">
+              <MascotSvg size={96} />
+              <span className="absolute -top-1 -right-12 bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap shadow-sm">
+                Hi, I&apos;m Zuri!
+              </span>
+            </div>
+          </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-800 mb-3 leading-tight">
             Make your kids{' '}
             <span className="text-green-600">Junior Rangers</span>

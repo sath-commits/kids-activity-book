@@ -1,5 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
+import MascotSvg from './MascotSvg'
 
 interface BingoPageProps {
   gridItems: string[]
@@ -11,7 +12,7 @@ const s = StyleSheet.create({
   grid: {
     marginTop: 12,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: colors.amber,
     borderRadius: 8,
     overflow: 'hidden',
   },
@@ -21,8 +22,8 @@ const s = StyleSheet.create({
   cell: {
     flex: 1,
     borderWidth: 0.5,
-    borderColor: colors.border,
-    minHeight: 80,
+    borderColor: '#e5d5a0',
+    minHeight: 76,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 4,
@@ -30,12 +31,12 @@ const s = StyleSheet.create({
   freeCell: {
     flex: 1,
     borderWidth: 0.5,
-    borderColor: colors.border,
-    minHeight: 80,
+    borderColor: '#e5d5a0',
+    minHeight: 76,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 4,
-    backgroundColor: colors.light,
+    backgroundColor: '#fef3c7',
   },
   cellText: {
     fontSize: 8.5,
@@ -77,25 +78,32 @@ export default function BingoPage({ gridItems, destinationDisplayName, pageNumbe
 
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>Adventure Bingo!</Text>
+      <View style={[styles.pageBand, { backgroundColor: colors.sunshine }]} />
+      <View style={{ position: 'absolute', top: 28, right: 28 }}>
+        <MascotSvg size={58} />
+      </View>
+      <Text style={[styles.h1, { color: colors.amber }]}>Adventure Bingo!</Text>
       <Text style={s.intro}>
         Find 5 things in a row — across, down, or diagonally — to win! Look for these at {destinationDisplayName}.
       </Text>
 
       <View style={s.grid}>
-        {rows.map((row, ri) => (
-          <View key={ri} style={s.row}>
-            {row.map((cell, ci) => (
-              <View key={ci} style={cell === null ? s.freeCell : s.cell}>
-                {cell === null ? (
-                  <Text style={s.freeCellText}>FREE{'\n'}SPACE</Text>
-                ) : (
-                  <Text style={s.cellText}>{cell}</Text>
-                )}
-              </View>
-            ))}
-          </View>
-        ))}
+        {rows.map((row, ri) => {
+          const rowBg = ri % 2 === 0 ? '#fffbf0' : '#fff8e1'
+          return (
+            <View key={ri} style={s.row}>
+              {row.map((cell, ci) => (
+                <View key={ci} style={[cell === null ? s.freeCell : s.cell, cell !== null ? { backgroundColor: rowBg } : {}]}>
+                  {cell === null ? (
+                    <Text style={s.freeCellText}>FREE{'\n'}SPACE</Text>
+                  ) : (
+                    <Text style={s.cellText}>{cell}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )
+        })}
       </View>
 
       <View style={styles.footer}>

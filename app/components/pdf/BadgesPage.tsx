@@ -88,7 +88,8 @@ const s = StyleSheet.create({
 export default function BadgesPage({ sections, badgeNames, pageNumber }: BadgesPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <Text style={styles.h1}>Explorer Badges</Text>
+      <View style={[styles.pageBand, { backgroundColor: colors.amber }]} />
+      <Text style={[styles.h1, { color: colors.amber }]}>Explorer Badges</Text>
       <Text style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>
         Earn each badge by visiting the location and completing its challenges!
       </Text>

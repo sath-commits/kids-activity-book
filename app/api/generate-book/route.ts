@@ -78,7 +78,7 @@ Return a JSON object with this exact schema (no markdown, no code fences, pure J
       "title": "Place or attraction name",
       "emoji": "🏔",
       "historyBlurb": "2-3 sentences kid-friendly history or science about this place",
-      "funFacts": ["4 to 6 memorable, educational facts — make them relatable with fun comparisons kids understand (e.g. 'These trees are older than your great-great-grandparents!', 'This rock weighs as much as 1,000 school buses!'). Include geography, science, nature, and history so kids learn WHY the place looks the way it does."],
+      "funFacts": ["7 to 9 memorable, educational facts — make them relatable with fun comparisons kids understand (e.g. 'These trees are older than your great-great-grandparents!', 'This rock weighs as much as 1,000 school buses!', 'The lake is deep enough to stack 10 school buses on top of each other!'). Include geography, science, nature, history, and wildlife so kids learn WHY the place looks the way it does and what makes it special."],
       "whatDoYouSee": ["4-5 observable things at this location"],
       "findThese": ["3-4 specific things to look for at this location"],
       "sectionScavengerHunt": ["4-5 specific scavenger hunt challenges for this place, as action items e.g. 'Find a rock with a hole in it', 'Spot 3 different bird species', 'Touch the bark of a tree and describe how it feels'"],
@@ -193,16 +193,22 @@ async function personalizeChildren(children: Child[], destination: string): Prom
       },
       {
         role: 'user',
-        content: `For each child below, create personalized activity content for their visit to ${destination}.
-Children: ${JSON.stringify(children.map((c) => ({ name: c.name, interests: c.interests || 'general exploration' })))}
+        content: `For each child below, create a personalized activity challenge based ONLY on their age and interests.
+Children: ${JSON.stringify(children.map((c) => ({ name: c.name, age: c.age, interests: c.interests || 'general exploration' })))}
+
+Rules:
+- Base the challenge on their age and interests ONLY — do NOT mention any specific location or place name
+- Make it a fun general activity: an observation game, counting challenge, creative task, or movement game
+- It should be doable anywhere during a trip (at any stop, in the car, at a rest area)
+- Keep it to 1 engaging sentence
 
 Return a JSON array (one object per child, in the same order):
 [
   {
     "name": "child name",
     "keywords": ["interest1", "interest2"],
-    "personalizedChallengeNote": "A fun 1-sentence challenge connecting their interests to what they might see at this destination",
-    "personalizedDrawingPrompt": "A drawing prompt that combines their interests with the destination"
+    "personalizedChallengeNote": "A fun 1-sentence challenge based only on their age and interests",
+    "personalizedDrawingPrompt": "A drawing prompt based on their interests"
   }
 ]`,
       },

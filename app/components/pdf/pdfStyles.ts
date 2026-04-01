@@ -1,6 +1,7 @@
 import { StyleSheet } from '@react-pdf/renderer'
 
 export const colors = {
+  // Primary brand
   primary: '#2d6a4f',
   accent: '#52b788',
   light: '#d8f3dc',
@@ -8,6 +9,29 @@ export const colors = {
   muted: '#666666',
   border: '#cccccc',
   pageBackground: '#ffffff',
+
+  // Page-type accent colors (used for top bands and h1 overrides)
+  orange: '#f97316',
+  coral: '#f4845f',
+  sky: '#0ea5e9',
+  sunshine: '#f59e0b',
+  purple: '#7c3aed',
+  pink: '#ec4899',
+  teal: '#0891b2',
+  amber: '#d97706',
+  rose: '#e11d48',
+  navy: '#2563eb',
+  gold: '#ca8a04',
+
+  // Soft fills matching band colors
+  lightOrange: '#fff7ed',
+  lightSky: '#f0f9ff',
+  lightSunshine: '#fffbeb',
+  lightPurple: '#f5f3ff',
+  lightPink: '#fdf2f8',
+  lightTeal: '#f0fdfa',
+  lightAmber: '#fffbeb',
+  lightNavy: '#eff6ff',
 }
 
 export const styles = StyleSheet.create({
@@ -211,5 +235,13 @@ export const styles = StyleSheet.create({
   signatureLabel: {
     fontSize: 9,
     color: colors.muted,
+  },
+  // Colored top band — place as first child with position absolute
+  pageBand: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 10,
   },
 })
