@@ -53,8 +53,8 @@ export interface GeneratedBook {
   tripDates?: TripDates
   cacheHit: boolean
   content: BookContent
-  coverImageB64: string | null
-  sectionImagesB64: (string | null)[]
+  coverImageUrl: string | null
+  sectionImageUrls: (string | null)[]
   childPersonalization: ChildPersonalization[]
   language: string
   parentEmail: string

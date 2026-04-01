@@ -47,7 +47,7 @@ interface BookPDFProps {
 }
 
 export default function BookPDF({ book }: BookPDFProps) {
-  const { content, coverImageB64, sectionImagesB64, childPersonalization, destinationDisplayName, tripDates, places, mapImageB64 } = book
+  const { content, coverImageUrl, sectionImageUrls, childPersonalization, destinationDisplayName, tripDates, places, mapImageB64 } = book
   const { sections, scavengerHuntItems, bingoGrid, badgeNames } = content
 
   const hasMap = !!mapImageB64 && Array.isArray(places) && places.length > 0
@@ -87,7 +87,7 @@ export default function BookPDF({ book }: BookPDFProps) {
         destinationDisplayName={destinationDisplayName}
         explorers={childPersonalization}
         tripDates={tripDates}
-        coverImageB64={coverImageB64}
+        coverImageUrl={coverImageUrl}
       />
 
       {/* Oath */}
@@ -116,7 +116,7 @@ export default function BookPDF({ book }: BookPDFProps) {
       {sections.flatMap((section, i) => {
         const childIdx = i % childPersonalization.length
         const child = childPersonalization[childIdx]
-        const imageB64 = sectionImagesB64?.[i] ?? null
+        const imageUrl = sectionImageUrls?.[i] ?? null
         const activityPageNum = 4 + mapOffset + i * 3
         const coloringPageNum = activityPageNum + 1
         const journalPageNum = activityPageNum + 2
@@ -130,7 +130,7 @@ export default function BookPDF({ book }: BookPDFProps) {
           <SectionColoringPage
             key={`coloring-${section.id}`}
             section={section}
-            imageB64={imageB64}
+            imageUrl={imageUrl}
             pageNumber={coloringPageNum}
           />,
           <SectionJournalPage

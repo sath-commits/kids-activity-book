@@ -115,6 +115,39 @@ ${sectionsInstruction} Badge names array must have the same length as sections a
   }
 }
 
+async function uploadImageToStorage(b64: string, path: string): Promise<string | null> {
+  try {
+    const buffer = Buffer.from(b64, 'base64')
+    const { error } = await getSupabase().storage
+      .from('book-images')
+      .upload(path, buffer, { contentType: 'image/png', upsert: true })
+    if (error) {
+      console.error('Storage upload error:', path, error.message)
+      return null
+    }
+    const { data } = getSupabase().storage.from('book-images').getPublicUrl(path)
+    return data.publicUrl
+  } catch (e) {
+    console.error('Storage upload exception:', e)
+    return null
+  }
+}
+
+async function uploadImagesToStorage(
+  slug: string,
+  coverB64: string | null,
+  sectionsB64: (string | null)[]
+): Promise<{ coverUrl: string | null; sectionUrls: (string | null)[] }> {
+  const coverUpload = coverB64
+    ? uploadImageToStorage(coverB64, `destinations/${slug}/cover.png`)
+    : Promise.resolve(null)
+  const sectionUploads = sectionsB64.map((b64, i) =>
+    b64 ? uploadImageToStorage(b64, `destinations/${slug}/section-${i}.png`) : Promise.resolve(null)
+  )
+  const [coverUrl, ...sectionUrls] = await Promise.all([coverUpload, ...sectionUploads])
+  return { coverUrl, sectionUrls }
+}
+
 async function generateCoverImage(displayName: string): Promise<string | null> {
   const prompt = `Children's illustrated adventure book cover, full color, vibrant, warm, cartoon style similar to a children's picture book: A cheerful landscape scene of ${displayName} with iconic landmarks and natural features beautifully depicted. Style: bright saturated colors, friendly rounded cartoon illustration, rich detailed background showing the destination's key scenery. Leave the top 20% of the image as open sky area for a title banner overlay.`
 
@@ -283,8 +316,8 @@ export async function POST(req: NextRequest) {
   const hasItinerary = Array.isArray(places) && places.length > 0
 
   let content: BookContent
-  let sectionImagesB64: (string | null)[]
-  let coverImageB64: string | null = null
+  let sectionImageUrls: (string | null)[]
+  let coverImageUrl: string | null = null
   let cacheHit = false
 
   let placeCoords: ([number, number] | null)[] | undefined
@@ -296,14 +329,25 @@ export async function POST(req: NextRequest) {
 
     // Itinerary-specific — always generate fresh, never cache
     content = await generateDestinationContent(destinationDisplayName, places!)
-    sectionImagesB64 = await generateSectionImages(destinationDisplayName, content)
+    const [sectionsB64, coverB64] = await Promise.all([
+      generateSectionImages(destinationDisplayName, content),
+      generateCoverImage(destinationDisplayName),
+    ])
+    const itinerarySlug = `${destinationSlug}_itinerary_${Date.now()}`
+    const uploaded = await uploadImagesToStorage(itinerarySlug, coverB64, sectionsB64)
+    coverImageUrl = uploaded.coverUrl
+    sectionImageUrls = uploaded.sectionUrls
   } else {
-    // Step A: Check destination cache
-    const { data: cached } = await getSupabase()
+    const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
+
+    // Check destination cache — select only non-image columns to avoid large row reads
+    const { data: cached, error: cacheReadError } = await getSupabase()
       .from('destination_cache')
-      .select('*')
-      .eq('destination_slug', language === 'en' ? destinationSlug : `${destinationSlug}_${language}`)
+      .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,hit_count')
+      .eq('destination_slug', cacheSlug)
       .maybeSingle()
+
+    if (cacheReadError) console.error('Cache read error:', cacheReadError.message)
 
     if (cached) {
       cacheHit = true
@@ -314,29 +358,37 @@ export async function POST(req: NextRequest) {
         bingoGrid: cached.bingo_grid_json as unknown as string[],
         badgeNames: cached.badge_names_json as unknown as string[],
       }
-      sectionImagesB64 = cached.section_images_b64 as unknown as (string | null)[]
 
-      const cachedCover = (cached as DestinationCache & { cover_image_b64?: string }).cover_image_b64
-      if (cachedCover) {
-        // Reuse cached cover — no DALL-E call needed
-        coverImageB64 = cachedCover
-        // Increment hit_count only
+      coverImageUrl = cached.cover_image_url ?? null
+      sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
+
+      if (!coverImageUrl || sectionImageUrls.length === 0) {
+        // Images missing from cache (old entry or first run) — generate and upload
+        const [sectionsB64, coverB64] = await Promise.all([
+          sectionImageUrls.length === 0 ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
+          !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
+        ])
+        const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
+        if (uploaded.coverUrl) coverImageUrl = uploaded.coverUrl
+        if (uploaded.sectionUrls.length > 0) sectionImageUrls = uploaded.sectionUrls
+        await getSupabase()
+          .from('destination_cache')
+          .update({
+            cover_image_url: coverImageUrl,
+            section_image_urls: sectionImageUrls,
+            hit_count: (cached.hit_count ?? 0) + 1,
+          })
+          .eq('destination_slug', cacheSlug)
+      } else {
         await getSupabase()
           .from('destination_cache')
           .update({ hit_count: (cached.hit_count ?? 0) + 1 })
-          .eq('destination_slug', cached.destination_slug)
-      } else {
-        // Cover was never generated for this cache entry — generate and save it now
-        coverImageB64 = await generateCoverImage(destinationDisplayName)
-        await getSupabase()
-          .from('destination_cache')
-          .update({ cover_image_b64: coverImageB64 ?? '', hit_count: (cached.hit_count ?? 0) + 1 })
-          .eq('destination_slug', cached.destination_slug)
+          .eq('destination_slug', cacheSlug)
       }
     } else {
-      // Generate content + images in parallel
+      // Cache miss — generate content + images
       content = await generateDestinationContent(destinationDisplayName)
-      ;[sectionImagesB64, coverImageB64] = await Promise.all([
+      const [sectionsB64, coverB64] = await Promise.all([
         generateSectionImages(destinationDisplayName, content),
         generateCoverImage(destinationDisplayName),
       ])
@@ -354,15 +406,18 @@ export async function POST(req: NextRequest) {
         content = await translateContent(content, language, languageNames[language])
       }
 
-      // Save to Supabase including cover image
-      const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
-      await getSupabase().from('destination_cache').upsert({
+      // Upload images to Storage (not inline in DB)
+      const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
+      coverImageUrl = uploaded.coverUrl
+      sectionImageUrls = uploaded.sectionUrls
+
+      const { error: upsertError } = await getSupabase().from('destination_cache').upsert({
         destination_slug: cacheSlug,
         destination_display_name: destinationDisplayName,
         destination_intro: content.destinationIntro,
         sections_json: content.sections,
-        cover_image_b64: coverImageB64 ?? '',
-        section_images_b64: sectionImagesB64,
+        cover_image_url: coverImageUrl,
+        section_image_urls: sectionImageUrls,
         scavenger_hunt_json: content.scavengerHuntItems,
         bingo_grid_json: content.bingoGrid,
         badge_names_json: content.badgeNames,
@@ -371,19 +426,15 @@ export async function POST(req: NextRequest) {
         ),
         hit_count: 1,
       })
+      if (upsertError) console.error('Cache upsert error:', upsertError.message)
     }
   }
 
-  // Child personalization + map (if itinerary) — cover already handled above
+  // Child personalization + map (if itinerary)
   const [childPersonalization, mapImageB64] = await Promise.all([
     personalizeChildren(children, destinationDisplayName),
     hasItinerary ? generateMapImage(places!, placeCoords!) : Promise.resolve(null),
   ])
-
-  // Itinerary books always get a fresh cover (custom per trip)
-  if (hasItinerary) {
-    coverImageB64 = await generateCoverImage(destinationDisplayName)
-  }
 
   return NextResponse.json({
     destinationDisplayName,
@@ -391,8 +442,8 @@ export async function POST(req: NextRequest) {
     tripDates,
     cacheHit,
     content,
-    coverImageB64,
-    sectionImagesB64,
+    coverImageUrl,
+    sectionImageUrls,
     childPersonalization,
     language,
     parentEmail,

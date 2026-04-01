@@ -22,8 +22,8 @@ export interface DestinationCache {
   destination_slug: string
   destination_display_name: string
   sections_json: SectionContent[]
-  cover_image_b64: string
-  section_images_b64: (string | null)[]
+  cover_image_url?: string | null
+  section_image_urls?: (string | null)[] | null
   scavenger_hunt_json: string[]
   bingo_grid_json: string[]
   badge_names_json: string[]

@@ -94,9 +94,9 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
         {/* Preview cards */}
         <div className="grid grid-cols-2 gap-3 mb-8">
           <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
-            {book.coverImageB64 ? (
+            {book.coverImageUrl ? (
               <img
-                src={`data:image/png;base64,${book.coverImageB64}`}
+                src={book.coverImageUrl}
                 alt="Cover page preview"
                 className="w-full object-cover"
                 style={{ maxHeight: 220 }}
@@ -111,10 +111,10 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
             </div>
           </div>
 
-          {book.sectionImagesB64?.[0] ? (
+          {book.sectionImageUrls?.[0] ? (
             <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
               <img
-                src={`data:image/png;base64,${book.sectionImagesB64[0]}`}
+                src={book.sectionImageUrls[0]}
                 alt="Sample section preview"
                 className="w-full object-cover"
                 style={{ maxHeight: 220 }}

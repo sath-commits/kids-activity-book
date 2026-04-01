@@ -6,7 +6,7 @@ interface CoverPageProps {
   destinationDisplayName: string
   explorers: ChildPersonalization[]
   tripDates?: { start: string; end: string }
-  coverImageB64: string | null
+  coverImageUrl: string | null
 }
 
 const s = StyleSheet.create({
@@ -104,14 +104,14 @@ const s = StyleSheet.create({
   },
 })
 
-export default function CoverPage({ destinationDisplayName, explorers, tripDates, coverImageB64 }: CoverPageProps) {
+export default function CoverPage({ destinationDisplayName, explorers, tripDates, coverImageUrl }: CoverPageProps) {
   return (
     <Page size="A4" style={s.page}>
       {/* Background image */}
-      {coverImageB64 && (
+      {coverImageUrl && (
         <Image
           style={s.bgImage}
-          src={`data:image/png;base64,${coverImageB64}`}
+          src={coverImageUrl}
         />
       )}
 
