@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet, Svg, Path } from '@react-pdf/renderer'
 import { SectionContent } from '@/lib/types'
-import { styles } from './pdfStyles'
+import { colors, styles } from './pdfStyles'
 
 interface BadgesPageProps {
   sections: SectionContent[]
