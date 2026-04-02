@@ -1,5 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
+import MascotWithBubble from './MascotWithBubble'
 import { CrosswordGrid } from '@/lib/crossword'
 
 interface CrosswordPageProps {
@@ -85,6 +86,9 @@ export default function CrosswordPage({ crossword, pageNumber }: CrosswordPagePr
 
   return (
     <Page size="A4" style={styles.page}>
+      <View style={{ position: 'absolute', top: 22, left: 28 }}>
+        <MascotWithBubble message={"Use the clues\nbelow to fill in\nall the letters!\nYou can do it!"} size={55} bubbleSide="right" />
+      </View>
       <Text style={styles.h1}>Crossword Puzzle</Text>
       <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 8 }}>
         Fill in the letters! Use the clues below to solve the puzzle.

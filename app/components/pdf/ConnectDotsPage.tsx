@@ -1,7 +1,7 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
 import { selectShape } from '@/lib/connectDots'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 interface ConnectDotsPageProps {
   destinationDisplayName: string
@@ -77,8 +77,8 @@ export default function ConnectDotsPage({ destinationDisplayName, pageNumber }: 
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.teal }]} />
-      <View style={{ position: 'absolute', top: 28, right: 28 }}>
-        <MascotSvg size={58} />
+      <View style={{ position: 'absolute', top: 22, left: 28 }}>
+        <MascotWithBubble message={"Connect the dots\nin order from 1\nto reveal the\nsurprise picture!"} size={55} bubbleSide="right" />
       </View>
       <Text style={[styles.h1, { color: colors.teal }]}>Connect the Dots!</Text>
       <Text style={s.subtitle}>

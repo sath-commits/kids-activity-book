@@ -1,6 +1,7 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
 import { WordSearchResult } from '@/lib/wordSearch'
+import MascotWithBubble from './MascotWithBubble'
 
 interface WordSearchPageProps {
   wordSearch: WordSearchResult
@@ -51,6 +52,9 @@ const s = StyleSheet.create({
 export default function WordSearchPage({ wordSearch, destinationDisplayName, pageNumber }: WordSearchPageProps) {
   return (
     <Page size="A4" style={styles.page}>
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Hidden words\neverywhere! Can\nyou find them\nall? Go go go!"} size={55} bubbleSide="left" />
+      </View>
       <Text style={styles.h1}>Word Search!</Text>
       <Text style={{ fontSize: 10, color: colors.muted, marginBottom: 8 }}>
         Find all the hidden words about {destinationDisplayName}. Words can go in any direction!

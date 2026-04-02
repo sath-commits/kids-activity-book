@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 interface BingoPageProps {
   gridItems: string[]
@@ -79,8 +79,8 @@ export default function BingoPage({ gridItems, destinationDisplayName, pageNumbe
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.sunshine }]} />
-      <View style={{ position: 'absolute', top: 28, right: 28 }}>
-        <MascotSvg size={58} />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Get five in a row\nto shout BINGO!\nGood luck,\nExplorer!"} size={55} bubbleSide="left" />
       </View>
       <Text style={[styles.h1, { color: colors.amber }]}>Adventure Bingo!</Text>
       <Text style={s.intro}>

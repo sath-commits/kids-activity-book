@@ -91,7 +91,7 @@ export default function BookPDF({ book }: BookPDFProps) {
       />
 
       {/* Oath */}
-      <OathPage />
+      <OathPage pageNumber={2} />
 
       {/* Map (only when itinerary was provided) */}
       {hasMap && (

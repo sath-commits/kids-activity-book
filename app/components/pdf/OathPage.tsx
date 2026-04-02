@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 const s = StyleSheet.create({
   content: {
@@ -79,14 +79,14 @@ const oathItems = [
   'Listen carefully and ask good questions',
 ]
 
-export default function OathPage() {
+export default function OathPage({ pageNumber }: { pageNumber: number }) {
   return (
     <Page size="A4" style={styles.page}>
       {/* Top color band */}
       <View style={[styles.pageBand, { backgroundColor: colors.accent }]} />
       {/* Mascot in top-right corner */}
-      <View style={{ position: 'absolute', top: 30, right: 30 }}>
-        <MascotSvg size={65} />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Hi! I'm Zuri!\nReady for your\nbig adventure?"} size={58} bubbleSide="left" />
       </View>
       <View style={s.content}>
         <Text style={[styles.h1, { textAlign: 'center' }]}>Junior Explorer Oath</Text>
@@ -114,7 +114,7 @@ export default function OathPage() {
 
       <View style={styles.footer}>
         <Text>Little Explorer · builtthisweekend.com</Text>
-        <Text>Page 2</Text>
+        <Text>Page {pageNumber}</Text>
       </View>
     </Page>
   )

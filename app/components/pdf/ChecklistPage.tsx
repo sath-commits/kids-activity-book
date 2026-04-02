@@ -1,7 +1,7 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { SectionContent } from '@/lib/types'
 import { colors, styles } from './pdfStyles'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 interface ChecklistPageProps {
   destinationDisplayName: string
@@ -60,8 +60,8 @@ export default function ChecklistPage({ destinationDisplayName, sections, badgeN
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.primary }]} />
-      <View style={{ position: 'absolute', top: 28, right: 28 }}>
-        <MascotSvg size={60} />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Visit each place\nand check it off!\nCan you get\nthem all?"} size={55} bubbleSide="left" />
       </View>
       <Text style={[styles.h1, { color: colors.primary }]}>Master Adventure Checklist</Text>
       <Text style={s.intro}>

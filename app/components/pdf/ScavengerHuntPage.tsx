@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 interface ScavengerHuntPageProps {
   items: string[]
@@ -61,8 +61,8 @@ export default function ScavengerHuntPage({ items, destinationDisplayName, pageN
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.teal }]} />
-      <View style={{ position: 'absolute', top: 28, right: 28 }}>
-        <MascotSvg size={58} />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Find each item\nand sketch what\nyou spotted!"} size={55} bubbleSide="left" />
       </View>
       <Text style={[styles.h1, { color: colors.teal }]}>Scavenger Hunt</Text>
       <Text style={s.intro}>

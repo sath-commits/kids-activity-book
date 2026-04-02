@@ -1,5 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
+import MascotWithBubble from './MascotWithBubble'
 
 interface SillyChallengesPageProps {
   challenges: string[]
@@ -46,6 +47,9 @@ const s = StyleSheet.create({
 export default function SillyChallengesPage({ challenges, destinationDisplayName, pageNumber }: SillyChallengesPageProps) {
   return (
     <Page size="A4" style={styles.page}>
+      <View style={{ position: 'absolute', top: 22, left: 28 }}>
+        <MascotWithBubble message={"These challenges\nare super silly —\nbut I dare you\nto try them all!"} size={55} bubbleSide="right" />
+      </View>
       <Text style={styles.h1}>Silly Challenges!</Text>
       <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12 }}>
         Can you complete all these fun challenges on your trip to {destinationDisplayName}? Check the box when you do it!

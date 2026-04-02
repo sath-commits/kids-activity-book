@@ -1,5 +1,16 @@
-import { Page, View, Text, Image } from '@react-pdf/renderer'
+import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer'
 import { SectionContent } from '@/lib/types'
+
+const s = StyleSheet.create({
+  pageNum: {
+    position: 'absolute',
+    bottom: 10,
+    right: 14,
+    fontSize: 7,
+    color: 'rgba(255,255,255,0.7)',
+    fontFamily: 'Nunito',
+  },
+})
 
 interface SectionColoringPageProps {
   section: SectionContent
@@ -18,6 +29,7 @@ export default function SectionColoringPage({ section, imageUrl, pageNumber }: S
           <Text style={{ fontSize: 12, color: '#666', textAlign: 'center' }}>Draw what you see here!</Text>
         </View>
       )}
+      <Text style={s.pageNum}>Page {pageNumber}</Text>
     </Page>
   )
 }

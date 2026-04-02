@@ -3,7 +3,7 @@
 import { Page, View, Text, StyleSheet, Svg, Line, Rect } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
 import { generateMaze } from '@/lib/maze'
-import MascotSvg from './MascotSvg'
+import MascotWithBubble from './MascotWithBubble'
 
 interface MazePageProps {
   seed: number
@@ -77,8 +77,8 @@ export default function MazePage({ seed, mazeIndex, pageNumber }: MazePageProps)
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.navy }]} />
-      <View style={{ position: 'absolute', top: 28, right: 28 }}>
-        <MascotSvg size={55} />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"Can you find\nyour way from\nSTART to EXIT?\nNo peeking!"} size={55} bubbleSide="left" />
       </View>
       <Text style={[styles.h1, { color: colors.navy }]}>Maze Challenge {mazeIndex}</Text>
       <Text style={s.subtitle}>
