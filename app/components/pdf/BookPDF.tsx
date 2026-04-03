@@ -79,19 +79,9 @@ export default function BookPDF({ book }: BookPDFProps) {
   const seed = hashStr(destinationDisplayName)
 
   // Age-gated page selection — use the OLDEST child's age as the ceiling
-  // so every child in the group has something challenging enough for them.
   const maxAge = childPersonalization.length > 0
     ? Math.max(...childPersonalization.map(c => c.age))
     : 8
-
-  // Age thresholds for each page type:
-  // Always (any age):   Bingo, Scavenger Hunt, Silly Challenges, Comic Strip,
-  //                     Map Drawing, Travel Menu, Top 5, Connect Dots, Maze 1
-  // 5+:                 Time Capsule Letter
-  // 6+:                 Word Search, Travel Trivia, Rebus Puzzles, Maze 2
-  // 7+:                 Second Word Search, Cryptogram
-  // 8+:                 Crossword, Logic Grid, Sudoku
-  // (Sudoku needs full number logic — appropriate from age 8)
 
   const showWordSearch    = maxAge >= 6 && (wordSearch?.placedWords.length ?? 0) > 0
   const showWordSearch2   = maxAge >= 7 && (wordSearch2?.placedWords.length ?? 0) > 0
@@ -101,20 +91,51 @@ export default function BookPDF({ book }: BookPDFProps) {
   const showRebus         = maxAge >= 6 && (content.rebusPuzzles?.length ?? 0) > 0
   const showLogicGrid     = maxAge >= 8 && !!content.logicGrid
   const showTravelTrivia  = maxAge >= 6 && (content.travelTrivia?.length ?? 0) > 0
-  const showTravelMenu    = (content.travelMenu?.length ?? 0) > 0           // all ages
-  const showTopFive       = (content.topFiveLists?.length ?? 0) > 0         // all ages
-  const showComicStrip    = !!content.comicStrip                             // all ages
-  const showMapDrawing    = !!content.mapDrawingChallenge                    // all ages
+  const showTravelMenu    = (content.travelMenu?.length ?? 0) > 0
+  const showTopFive       = (content.topFiveLists?.length ?? 0) > 0
+  const showComicStrip    = !!content.comicStrip
+  const showMapDrawing    = !!content.mapDrawingChallenge
   const showTimeCapsule   = maxAge >= 5 && !!content.timeCapsuleLetter
   const showMaze2         = maxAge >= 6
   const showSillyChallenges = Array.isArray(content.sillyChallenges) && content.sillyChallenges.length > 0
 
   // Sudoku difficulty by age: 8–9 → easy, 10–11 → medium, 12+ → hard
   const sudokuDifficulty: SudokuDifficulty = maxAge <= 9 ? 'easy' : maxAge >= 12 ? 'hard' : 'medium'
-  // Only generate sudoku if we'll show it
   const sudoku = showSudoku ? generateSudoku(seed, sudokuDifficulty) : null
 
-  // Build page number sequence — only include pages that will render
+  // ── Bonus page slots ──────────────────────────────────────────────────────
+  // Build an ordered list of bonus page keys (only pages that will render).
+  // These are distributed evenly between sections to break monotony.
+  const bonusSlots: string[] = [
+    'scavengerHunt',
+    'bingo',
+    ...(showTravelTrivia  ? ['travelTrivia']    : []),
+    ...(showCrossword     ? ['crossword']        : []),
+    ...(showWordSearch    ? ['wordSearch']       : []),
+    ...(showRebus         ? ['rebus']            : []),
+    'connectDots',
+    ...(showTravelMenu    ? ['travelMenu']       : []),
+    ...(showComicStrip    ? ['comicStrip']       : []),
+    ...(showWordSearch2   ? ['wordSearch2']      : []),
+    'maze1',
+    ...(showSudoku        ? ['sudoku']           : []),
+    ...(showCryptogram    ? ['cryptogram']       : []),
+    ...(showTopFive       ? ['topFive']          : []),
+    ...(showLogicGrid     ? ['logicGrid']        : []),
+    ...(showMaze2         ? ['maze2']            : []),
+    ...(showMapDrawing    ? ['mapDrawing']       : []),
+    ...(showTimeCapsule   ? ['timeCapsule']      : []),
+    ...(showSillyChallenges ? ['sillyChallenges'] : []),
+  ]
+
+  // Distribute bonus pages as evenly as possible after each section.
+  // Earlier sections get the extra page when total doesn't divide evenly.
+  const sectionCount = sections.length
+  const base = Math.floor(bonusSlots.length / sectionCount)
+  const extra = bonusSlots.length % sectionCount
+  const bonusAfter: number[] = sections.map((_, i) => base + (i < extra ? 1 : 0))
+
+  // ── Page number assignment (must follow render order) ─────────────────────
   let p = 1
   const pn: Record<string, number> = {}
   const sectionPn: { activity: number; coloring: number; journal: number }[] = []
@@ -123,49 +144,78 @@ export default function BookPDF({ book }: BookPDFProps) {
   pn.oath = p++
   if (hasMap) pn.map = p++
   pn.checklist = p++
-  for (let i = 0; i < sections.length; i++) {
+
+  let bonusAssignIdx = 0
+  for (let i = 0; i < sectionCount; i++) {
     sectionPn.push({ activity: p++, coloring: p++, journal: p++ })
+    for (let b = 0; b < bonusAfter[i]; b++) {
+      pn[bonusSlots[bonusAssignIdx++]] = p++
+    }
   }
-  pn.scavengerHunt = p++
-  pn.bingo = p++
-  if (showCrossword) pn.crossword = p++
-  if (showWordSearch) pn.wordSearch = p++
-  if (showWordSearch2) pn.wordSearch2 = p++
-  if (showSudoku) pn.sudoku = p++
-  if (showCryptogram) pn.cryptogram = p++
-  if (showRebus) pn.rebus = p++
-  if (showLogicGrid) pn.logicGrid = p++
-  if (showTravelTrivia) pn.travelTrivia = p++
-  if (showTravelMenu) pn.travelMenu = p++
-  if (showTopFive) pn.topFive = p++
-  if (showComicStrip) pn.comicStrip = p++
-  pn.connectDots = p++
-  pn.maze1 = p++
-  if (showMaze2) pn.maze2 = p++
-  if (showMapDrawing) pn.mapDrawing = p++
-  if (showTimeCapsule) pn.timeCapsule = p++
-  if (showSillyChallenges) pn.sillyChallenges = p++
+
   pn.badges = p++
   childPersonalization.forEach((_, i) => { pn[`cert_${i}`] = p++ })
   pn.answerKey = p++
+
+  // ── Bonus page renderer ───────────────────────────────────────────────────
+  function renderBonusPage(key: string) {
+    switch (key) {
+      case 'scavengerHunt':
+        return <ScavengerHuntPage key="scavengerHunt" items={scavengerHuntItems} destinationDisplayName={destinationDisplayName} pageNumber={pn.scavengerHunt} />
+      case 'bingo':
+        return <BingoPage key="bingo" gridItems={bingoGrid} destinationDisplayName={destinationDisplayName} pageNumber={pn.bingo} />
+      case 'crossword':
+        return crossword ? <CrosswordPage key="crossword" crossword={crossword} pageNumber={pn.crossword} /> : null
+      case 'wordSearch':
+        return wordSearch ? <WordSearchPage key="wordSearch" wordSearch={wordSearch} destinationDisplayName={destinationDisplayName} pageNumber={pn.wordSearch} /> : null
+      case 'wordSearch2':
+        return wordSearch2 ? <WordSearchPage key="wordSearch2" wordSearch={wordSearch2} destinationDisplayName={destinationDisplayName} pageNumber={pn.wordSearch2} /> : null
+      case 'sudoku':
+        return sudoku ? <SudokuPage key="sudoku" puzzle={sudoku.puzzle} difficulty={sudokuDifficulty} pageNumber={pn.sudoku} /> : null
+      case 'cryptogram':
+        return <CryptogramPage key="cryptogram" phrase={content.cryptogramPhrase!} pageNumber={pn.cryptogram} />
+      case 'rebus':
+        return <RebusPuzzlePage key="rebus" puzzles={content.rebusPuzzles!} destinationDisplayName={destinationDisplayName} pageNumber={pn.rebus} />
+      case 'logicGrid':
+        return <LogicGridPage key="logicGrid" logicGrid={content.logicGrid!} pageNumber={pn.logicGrid} />
+      case 'travelTrivia':
+        return <TravelTriviaPage key="travelTrivia" trivia={content.travelTrivia!} destinationDisplayName={destinationDisplayName} pageNumber={pn.travelTrivia} />
+      case 'travelMenu':
+        return <TravelMenuPage key="travelMenu" menu={content.travelMenu!} destinationDisplayName={destinationDisplayName} pageNumber={pn.travelMenu} />
+      case 'topFive':
+        return <TopFivePage key="topFive" topFiveLists={content.topFiveLists!} destinationDisplayName={destinationDisplayName} pageNumber={pn.topFive} />
+      case 'comicStrip':
+        return <ComicStripPage key="comicStrip" comicStrip={content.comicStrip!} pageNumber={pn.comicStrip} />
+      case 'connectDots':
+        return <ConnectDotsPage key="connectDots" destinationDisplayName={destinationDisplayName} pageNumber={pn.connectDots} />
+      case 'maze1':
+        return <MazePage key="maze1" seed={seed} mazeIndex={1} pageNumber={pn.maze1} />
+      case 'maze2':
+        return <MazePage key="maze2" seed={seed} mazeIndex={2} pageNumber={pn.maze2} />
+      case 'mapDrawing':
+        return <MapDrawingPage key="mapDrawing" mapDrawingChallenge={content.mapDrawingChallenge!} destinationDisplayName={destinationDisplayName} pageNumber={pn.mapDrawing} />
+      case 'timeCapsule':
+        return <TimeCapsulePage key="timeCapsule" timeCapsuleLetter={content.timeCapsuleLetter!} pageNumber={pn.timeCapsule} />
+      case 'sillyChallenges':
+        return <SillyChallengesPage key="sillyChallenges" challenges={content.sillyChallenges!} destinationDisplayName={destinationDisplayName} pageNumber={pn.sillyChallenges} />
+      default:
+        return null
+    }
+  }
 
   return (
     <Document
       title={`${destinationDisplayName} Junior Explorer Adventure`}
       author="Little Explorer · builtthisweekend.com"
     >
-      {/* Cover */}
+      {/* ── Front matter ── */}
       <CoverPage
         destinationDisplayName={destinationDisplayName}
         explorers={childPersonalization}
         tripDates={tripDates}
         coverImageUrl={coverImageUrl}
       />
-
-      {/* Oath */}
       <OathPage pageNumber={pn.oath} />
-
-      {/* Map (only when itinerary was provided) */}
       {hasMap && (
         <MapPage
           destinationDisplayName={destinationDisplayName}
@@ -175,8 +225,6 @@ export default function BookPDF({ book }: BookPDFProps) {
           pageNumber={pn.map}
         />
       )}
-
-      {/* Checklist */}
       <ChecklistPage
         destinationDisplayName={destinationDisplayName}
         sections={sections}
@@ -184,12 +232,16 @@ export default function BookPDF({ book }: BookPDFProps) {
         pageNumber={pn.checklist}
       />
 
-      {/* Sections: activity + coloring + journal page triples */}
+      {/* ── Interleaved sections + bonus pages ── */}
       {sections.flatMap((section, i) => {
-        const childIdx = i % childPersonalization.length
-        const child = childPersonalization[childIdx]
+        const child = childPersonalization[i % childPersonalization.length]
         const imageUrl = sectionImageUrls?.[i] ?? null
         const sp = sectionPn[i]
+
+        // Compute which bonus slots follow this section
+        const slotStart = bonusAfter.slice(0, i).reduce((a, b) => a + b, 0)
+        const slotKeys = bonusSlots.slice(slotStart, slotStart + bonusAfter[i])
+
         return [
           <SectionActivityPage
             key={`activity-${section.id}`}
@@ -209,142 +261,16 @@ export default function BookPDF({ book }: BookPDFProps) {
             childAge={child.age}
             pageNumber={sp.journal}
           />,
+          ...slotKeys.map(key => renderBonusPage(key)),
         ]
       })}
 
-      {/* Scavenger Hunt */}
-      <ScavengerHuntPage
-        items={scavengerHuntItems}
-        destinationDisplayName={destinationDisplayName}
-        pageNumber={pn.scavengerHunt}
-      />
-
-      {/* Bingo */}
-      <BingoPage
-        gridItems={bingoGrid}
-        destinationDisplayName={destinationDisplayName}
-        pageNumber={pn.bingo}
-      />
-
-      {/* Crossword — age 8+ */}
-      {showCrossword && crossword && (
-        <CrosswordPage
-          crossword={crossword}
-          pageNumber={pn.crossword}
-        />
-      )}
-
-      {/* Word Search — age 6+ */}
-      {showWordSearch && wordSearch && (
-        <WordSearchPage
-          wordSearch={wordSearch}
-          destinationDisplayName={destinationDisplayName}
-          pageNumber={pn.wordSearch}
-        />
-      )}
-
-      {/* Word Search 2 — age 7+ */}
-      {showWordSearch2 && wordSearch2 && (
-        <WordSearchPage
-          wordSearch={wordSearch2}
-          destinationDisplayName={destinationDisplayName}
-          pageNumber={pn.wordSearch2}
-        />
-      )}
-
-      {/* Sudoku — age 8+ */}
-      {showSudoku && sudoku && (
-        <SudokuPage puzzle={sudoku.puzzle} difficulty={sudokuDifficulty} pageNumber={pn.sudoku} />
-      )}
-
-      {/* Cryptogram — age 7+ */}
-      {showCryptogram && (
-        <CryptogramPage phrase={content.cryptogramPhrase!} pageNumber={pn.cryptogram} />
-      )}
-
-      {/* Rebus Puzzles — age 6+ */}
-      {showRebus && (
-        <RebusPuzzlePage puzzles={content.rebusPuzzles!} destinationDisplayName={destinationDisplayName} pageNumber={pn.rebus} />
-      )}
-
-      {/* Logic Grid — age 8+ */}
-      {showLogicGrid && (
-        <LogicGridPage logicGrid={content.logicGrid!} pageNumber={pn.logicGrid} />
-      )}
-
-      {/* Travel Trivia — age 6+ */}
-      {showTravelTrivia && (
-        <TravelTriviaPage trivia={content.travelTrivia!} destinationDisplayName={destinationDisplayName} pageNumber={pn.travelTrivia} />
-      )}
-
-      {/* Travel Menu — all ages */}
-      {showTravelMenu && (
-        <TravelMenuPage menu={content.travelMenu!} destinationDisplayName={destinationDisplayName} pageNumber={pn.travelMenu} />
-      )}
-
-      {/* Top 5 Lists — all ages */}
-      {showTopFive && (
-        <TopFivePage topFiveLists={content.topFiveLists!} destinationDisplayName={destinationDisplayName} pageNumber={pn.topFive} />
-      )}
-
-      {/* Comic Strip — all ages */}
-      {showComicStrip && (
-        <ComicStripPage comicStrip={content.comicStrip!} pageNumber={pn.comicStrip} />
-      )}
-
-      {/* Connect the Dots — all ages */}
-      <ConnectDotsPage
-        destinationDisplayName={destinationDisplayName}
-        pageNumber={pn.connectDots}
-      />
-
-      {/* Maze 1 — all ages */}
-      <MazePage
-        seed={seed}
-        mazeIndex={1}
-        pageNumber={pn.maze1}
-      />
-
-      {/* Maze 2 — age 6+ */}
-      {showMaze2 && (
-        <MazePage
-          seed={seed}
-          mazeIndex={2}
-          pageNumber={pn.maze2}
-        />
-      )}
-
-      {/* Map Drawing Challenge — all ages */}
-      {showMapDrawing && (
-        <MapDrawingPage
-          mapDrawingChallenge={content.mapDrawingChallenge!}
-          destinationDisplayName={destinationDisplayName}
-          pageNumber={pn.mapDrawing}
-        />
-      )}
-
-      {/* Time Capsule Letter — age 5+ */}
-      {showTimeCapsule && (
-        <TimeCapsulePage timeCapsuleLetter={content.timeCapsuleLetter!} pageNumber={pn.timeCapsule} />
-      )}
-
-      {/* Silly Challenges — all ages */}
-      {showSillyChallenges && (
-        <SillyChallengesPage
-          challenges={content.sillyChallenges!}
-          destinationDisplayName={destinationDisplayName}
-          pageNumber={pn.sillyChallenges}
-        />
-      )}
-
-      {/* Badges */}
+      {/* ── Back matter ── */}
       <BadgesPage
         sections={sections}
         badgeNames={badgeNames}
         pageNumber={pn.badges}
       />
-
-      {/* Certificates — one per child */}
       {childPersonalization.map((child, i) => (
         <CertificatePage
           key={`cert-${child.name}`}
@@ -353,8 +279,6 @@ export default function BookPDF({ book }: BookPDFProps) {
           pageNumber={pn[`cert_${i}`]}
         />
       ))}
-
-      {/* Answer Key */}
       <AnswerKeyPage
         sections={sections}
         pageNumber={pn.answerKey}

@@ -44,9 +44,9 @@ const s = StyleSheet.create({
 })
 
 const DIFFICULTY_LABELS: Record<SudokuDifficulty, string> = {
-  easy:   '⭐ Easy',
-  medium: '⭐⭐ Medium',
-  hard:   '⭐⭐⭐ Hard',
+  easy:   '— Easy',
+  medium: '— Medium',
+  hard:   '— Hard',
 }
 
 const DIFFICULTY_SUBTITLES: Record<SudokuDifficulty, string> = {

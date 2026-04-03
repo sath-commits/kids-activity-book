@@ -62,9 +62,9 @@ async function geocodePlace(query: string, destination: string, proximity?: [num
     const feature = data.features?.[0]
     if (feature) {
       const coords = feature.center as [number, number]
-      // Reject if result is more than 150km from destination centroid — prevents
-      // Mapbox returning a more-prominent same-named place in a neighbouring city
-      if (proximity && haversineKm(proximity[0], proximity[1], coords[0], coords[1]) > 150) {
+      // Reject if result is more than 100km from destination centroid — prevents
+      // Mapbox returning a more-prominent same-named place in a neighbouring city/region
+      if (proximity && haversineKm(proximity[0], proximity[1], coords[0], coords[1]) > 100) {
         // fall through to Google
       } else {
         const canonical = (feature.text as string) ?? (feature.place_name as string).split(',')[0].trim()

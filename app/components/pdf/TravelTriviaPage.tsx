@@ -35,10 +35,13 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 6,
   },
-  trophy: {
-    fontSize: 13,
+  qLabel: {
+    fontSize: 10,
+    fontFamily: 'Nunito-Bold',
+    color: colors.sky,
     marginRight: 5,
-    marginTop: -1,
+    marginTop: 1,
+    flexShrink: 0,
   },
   question: {
     fontSize: 10,
@@ -84,8 +87,8 @@ export default function TravelTriviaPage({ trivia, destinationDisplayName, pageN
         {trivia.map((item, i) => (
           <View key={i} style={s.card}>
             <View style={s.cardHeader}>
-              <Text style={s.trophy}>🏆</Text>
-              <Text style={s.question}>Q: {item.question}</Text>
+              <Text style={s.qLabel}>Q:</Text>
+              <Text style={s.question}>{item.question}</Text>
             </View>
             <View style={s.answerBox}>
               <Text style={s.answerLabel}>Your answer:</Text>

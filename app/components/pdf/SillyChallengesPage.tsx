@@ -47,8 +47,8 @@ const s = StyleSheet.create({
 export default function SillyChallengesPage({ challenges, destinationDisplayName, pageNumber }: SillyChallengesPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <View style={{ position: 'absolute', top: 22, left: 28 }}>
-        <MascotWithBubble message={"These challenges\nare super silly —\nbut I dare you\nto try them all!"} size={55} bubbleSide="right" />
+      <View style={{ position: 'absolute', top: 22, right: 28 }}>
+        <MascotWithBubble message={"These challenges\nare super silly —\nbut I dare you\nto try them all!"} size={55} bubbleSide="left" />
       </View>
       <Text style={styles.h1}>Silly Challenges!</Text>
       <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 12 }}>

@@ -107,7 +107,7 @@ export default function TopFivePage({ topFiveLists, destinationDisplayName, page
                 {list.items.slice(0, 5).map((item, ii) => (
                   <View key={ii} style={s.listItem}>
                     <Text style={[s.itemNumber, { color: palette.header }]}>{ii + 1}.</Text>
-                    <Text style={s.itemText}>⭐ {item}</Text>
+                    <Text style={s.itemText}>{item}</Text>
                   </View>
                 ))}
                 <View style={s.drawBox}>
