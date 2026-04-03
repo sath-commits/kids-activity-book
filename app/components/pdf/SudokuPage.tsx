@@ -2,8 +2,11 @@ import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
 import MascotWithBubble from './MascotWithBubble'
 
+import { SudokuDifficulty } from '@/lib/sudoku'
+
 interface SudokuPageProps {
   puzzle: (number | null)[][]
+  difficulty: SudokuDifficulty
   pageNumber: number
 }
 
@@ -40,7 +43,19 @@ const s = StyleSheet.create({
   },
 })
 
-export default function SudokuPage({ puzzle, pageNumber }: SudokuPageProps) {
+const DIFFICULTY_LABELS: Record<SudokuDifficulty, string> = {
+  easy:   '⭐ Easy',
+  medium: '⭐⭐ Medium',
+  hard:   '⭐⭐⭐ Hard',
+}
+
+const DIFFICULTY_SUBTITLES: Record<SudokuDifficulty, string> = {
+  easy:   'Fill in the grid so every row, column, and 3×3 box contains the numbers 1–9. Extra numbers are given to help you get started!',
+  medium: 'Fill in the grid so every row, column, and 3×3 box contains the numbers 1–9. Use logic — no guessing needed!',
+  hard:   'Fill in the grid so every row, column, and 3×3 box contains the numbers 1–9. Challenge mode: fewer numbers given — good luck!',
+}
+
+export default function SudokuPage({ puzzle, difficulty, pageNumber }: SudokuPageProps) {
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.sky }]} />
@@ -52,10 +67,8 @@ export default function SudokuPage({ puzzle, pageNumber }: SudokuPageProps) {
         />
       </View>
 
-      <Text style={[styles.h1, { color: colors.sky }]}>Sudoku Puzzle</Text>
-      <Text style={s.subtitle}>
-        Fill in the grid so every row, column, and 3×3 box contains the numbers 1-9. Use logic — no guessing needed!
-      </Text>
+      <Text style={[styles.h1, { color: colors.sky }]}>Sudoku Puzzle <Text style={{ fontSize: 14 }}>{DIFFICULTY_LABELS[difficulty]}</Text></Text>
+      <Text style={s.subtitle}>{DIFFICULTY_SUBTITLES[difficulty]}</Text>
 
       <View style={s.grid}>
         {puzzle.map((row, ri) => (

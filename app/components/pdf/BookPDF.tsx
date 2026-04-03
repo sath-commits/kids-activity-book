@@ -32,7 +32,7 @@ import TimeCapsulePage from './TimeCapsulePage'
 import { buildCrossword } from '@/lib/crossword'
 import { buildWordSearch } from '@/lib/wordSearch'
 import { hashStr } from '@/lib/maze'
-import { generateSudoku } from '@/lib/sudoku'
+import { generateSudoku, SudokuDifficulty } from '@/lib/sudoku'
 
 // Register fonts
 Font.register({
@@ -109,8 +109,10 @@ export default function BookPDF({ book }: BookPDFProps) {
   const showMaze2         = maxAge >= 6
   const showSillyChallenges = Array.isArray(content.sillyChallenges) && content.sillyChallenges.length > 0
 
+  // Sudoku difficulty by age: 8–9 → easy, 10–11 → medium, 12+ → hard
+  const sudokuDifficulty: SudokuDifficulty = maxAge <= 9 ? 'easy' : maxAge >= 12 ? 'hard' : 'medium'
   // Only generate sudoku if we'll show it
-  const sudoku = showSudoku ? generateSudoku(seed) : null
+  const sudoku = showSudoku ? generateSudoku(seed, sudokuDifficulty) : null
 
   // Build page number sequence — only include pages that will render
   let p = 1
@@ -204,6 +206,7 @@ export default function BookPDF({ book }: BookPDFProps) {
           <SectionJournalPage
             key={`journal-${section.id}`}
             sectionTitle={section.title}
+            childAge={child.age}
             pageNumber={sp.journal}
           />,
         ]
@@ -251,7 +254,7 @@ export default function BookPDF({ book }: BookPDFProps) {
 
       {/* Sudoku — age 8+ */}
       {showSudoku && sudoku && (
-        <SudokuPage puzzle={sudoku.puzzle} pageNumber={pn.sudoku} />
+        <SudokuPage puzzle={sudoku.puzzle} difficulty={sudokuDifficulty} pageNumber={pn.sudoku} />
       )}
 
       {/* Cryptogram — age 7+ */}

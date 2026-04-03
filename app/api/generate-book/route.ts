@@ -641,7 +641,7 @@ export async function POST(req: NextRequest) {
     childPersonalization,
     language,
     parentEmail,
-    places: hasItinerary ? places : undefined,
-    mapImageB64: mapImageB64 ?? null,
+    places: undefined,
+    mapImageB64: null,
   })
 }

@@ -56,14 +56,26 @@ function fill(grid: number[][], rng: () => number): boolean {
   return true
 }
 
-export function generateSudoku(seed: number): SudokuPuzzle {
+// difficulty → number of cells removed (givens = 81 - removals)
+// easy:   36 removed → 45 given  (age 8–9)
+// medium: 45 removed → 36 given  (age 10–11)
+// hard:   52 removed → 29 given  (age 12+)
+export type SudokuDifficulty = 'easy' | 'medium' | 'hard'
+
+const REMOVALS: Record<SudokuDifficulty, number> = {
+  easy: 36,
+  medium: 45,
+  hard: 52,
+}
+
+export function generateSudoku(seed: number, difficulty: SudokuDifficulty = 'medium'): SudokuPuzzle {
   const rng = makeRng(seed)
   const solution: number[][] = Array.from({ length: 9 }, () => Array(9).fill(0))
   fill(solution, rng)
 
-  // Remove ~45 cells for easy difficulty (36 given, appropriate for kids)
+  const removals = REMOVALS[difficulty]
   const puzzle: (number | null)[][] = solution.map(row => [...row] as (number | null)[])
-  const cells = shuffled(Array.from({ length: 81 }, (_, i) => i), rng).slice(0, 45)
+  const cells = shuffled(Array.from({ length: 81 }, (_, i) => i), rng).slice(0, removals)
   for (const cell of cells) {
     puzzle[Math.floor(cell / 9)][cell % 9] = null
   }
