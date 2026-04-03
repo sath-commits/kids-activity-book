@@ -48,6 +48,147 @@ function validateInput(body: GenerateBookRequest): string | null {
   return null
 }
 
+type BonusContent = Pick<BookContent,
+  'cryptogramPhrase' | 'rebusPuzzles' | 'travelTrivia' |
+  'travelMenu' | 'topFiveLists' | 'comicStrip' | 'mapDrawingChallenge' | 'timeCapsuleLetter'
+>
+
+// Non-logic-grid bonus content — uses mini (no complex reasoning needed)
+async function generateBonusContent(displayName: string): Promise<BonusContent> {
+  try {
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      max_tokens: 3000,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a children\'s activity book creator. Create fun, age-appropriate content for kids ages 4-12. Return ONLY valid JSON, no markdown, no code fences.',
+        },
+        {
+          role: 'user',
+          content: `Create bonus activity content for a kids activity book about: ${displayName}
+
+Return a JSON object with this exact schema:
+{
+  "cryptogramPhrase": "A fun 8-12 word fact about ${displayName} using simple vocabulary (e.g. 'The giant trees here are older than your great grandparents')",
+  "rebusPuzzles": [
+    {"equation": "WATER + FALL", "answer": "WATERFALL"},
+    {"equation": "CAMP + FIRE", "answer": "CAMPFIRE"}
+  ],
+  "travelTrivia": [
+    {"question": "destination-specific trivia question", "answer": "short answer"}
+  ],
+  "travelMenu": [
+    {
+      "category": "Starters",
+      "items": [{"name": "Silly destination-themed dish name", "description": "funny description", "price": "$3.00"}]
+    }
+  ],
+  "topFiveLists": [
+    {"title": "Top 5 Animals to Spot", "items": ["item1", "item2", "item3", "item4", "item5"]},
+    {"title": "Top 5 Things to Taste", "items": ["..."]},
+    {"title": "Top 5 Must-Do Activities", "items": ["..."]}
+  ],
+  "comicStrip": {
+    "title": "My ${displayName} Adventure!",
+    "panels": [
+      {"scene": "Arriving, looking excited"},
+      {"scene": "Seeing something amazing"},
+      {"scene": "Having a funny moment"},
+      {"scene": "Making a discovery"},
+      {"scene": "Trying something brave"},
+      {"scene": "Saying goodbye, happy and tired"}
+    ]
+  },
+  "mapDrawingChallenge": {
+    "instructions": ["Draw North at the top", "Add 3 roads or paths", "Mark where you ate lunch", "Draw the animals you saw", "Add your favorite spot with a star"],
+    "landmarks": ["6-8 specific landmarks/features at ${displayName}"]
+  },
+  "timeCapsuleLetter": {
+    "prompts": [
+      "My name is ___ and I am ___ years old.",
+      "I am visiting ${displayName} with ___",
+      "The first thing I saw was ___",
+      "The most amazing thing was ___",
+      "I ate ___ and it was ___",
+      "The funniest moment was ___",
+      "I felt ___ when I saw ___",
+      "My favorite memory from today is ___",
+      "When I grow up I want to ___",
+      "A message for future me: ___"
+    ]
+  }
+}
+
+Rules:
+- rebusPuzzles: exactly 6 compound word puzzles using destination-relevant words. "equation" shows the parts (e.g. "RAIN + FOREST"), "answer" is combined (e.g. "RAINFOREST").
+- travelTrivia: exactly 8 questions, mix easy and medium, answers 1-5 words.
+- travelMenu: exactly 3 categories (Starters, Mains, Desserts), 3 items each, silly destination-themed names.
+- comicStrip: exactly 6 panels, scene descriptions 4-8 words.`,
+        },
+      ],
+    })
+
+    const raw = completion.choices[0].message.content?.trim() ?? ''
+    try {
+      return JSON.parse(raw) as BonusContent
+    } catch {
+      return {}
+    }
+  } catch (e) {
+    console.error('Bonus content generation failed:', e)
+    return {}
+  }
+}
+
+// Logic grid — kept on gpt-4o because it requires consistent logical reasoning
+// (clues must uniquely and correctly solve to the given answer)
+async function generateLogicGrid(displayName: string): Promise<BookContent['logicGrid'] | undefined> {
+  try {
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o',
+      temperature: 0.5,
+      max_tokens: 500,
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a children\'s puzzle designer. Return ONLY valid JSON. The logic grid clues MUST be logically consistent — each clue must be unambiguous and together they must lead to exactly one solution.',
+        },
+        {
+          role: 'user',
+          content: `Create a logic grid puzzle for a kids activity book about: ${displayName}
+
+Three explorer friends each spotted one amazing thing first. Use clues to figure out who saw what.
+
+Return JSON with this exact schema:
+{
+  "intro": "Three explorer friends each spotted one amazing thing first at ${displayName}. Can you figure out who saw what?",
+  "people": ["Maya", "Finn", "Zoe"],
+  "options": ["ThingA", "ThingB", "ThingC"],
+  "clues": ["Clue 1", "Clue 2", "Clue 3"],
+  "solution": {"Maya": "ThingA", "Finn": "ThingB", "Zoe": "ThingC"}
+}
+
+Rules:
+- options must be 3 things specific and interesting at ${displayName} (e.g. animals, landmarks, natural features)
+- clues must each eliminate at least one possibility — together they must lead to EXACTLY ONE solution
+- verify: work through the clues yourself before returning to confirm the solution is correct and unique
+- clues should be fun for kids, not too abstract`,
+        },
+      ],
+    })
+
+    const raw = completion.choices[0].message.content?.trim() ?? ''
+    return JSON.parse(raw) as BookContent['logicGrid']
+  } catch (e) {
+    console.error('Logic grid generation failed:', e)
+    return undefined
+  }
+}
+
 async function generateDestinationContent(displayName: string, places?: string[]): Promise<BookContent> {
   const sectionsInstruction = places && places.length > 0
     ? `Generate sections for ONLY these specific places the family will visit (in this order): ${places.join(', ')}. Do not add or substitute other attractions — only cover what they listed.`
@@ -208,9 +349,10 @@ async function personalizeChildren(children: Child[], destination: string): Prom
   }
 
   const completion = await getOpenAI().chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     temperature: 0.7,
     max_tokens: 800,
+    response_format: { type: 'json_object' },
     messages: [
       {
         role: 'system',
@@ -270,7 +412,7 @@ Return a JSON array (one object per child, in the same order):
 
 async function translateContent(content: BookContent, language: string, languageName: string): Promise<BookContent> {
   const completion = await getOpenAI().chat.completions.create({
-    model: 'gpt-4o',
+    model: 'gpt-4o-mini',
     temperature: 0.3,
     max_tokens: 6000,
     messages: [
@@ -315,126 +457,178 @@ export async function POST(req: NextRequest) {
   const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail, places, placeGeoQueries } = body
   const hasItinerary = Array.isArray(places) && places.length > 0
 
+  const languageNames: Record<string, string> = {
+    es: 'Spanish', fr: 'French', zh: 'Chinese (Simplified)', pt: 'Portuguese',
+  }
+
   let content: BookContent
   let sectionImageUrls: (string | null)[]
   let coverImageUrl: string | null = null
   let cacheHit = false
-
   let placeCoords: ([number, number] | null)[] | undefined
 
+  // Start personalization immediately — it only needs children + destination name,
+  // not the generated content, so it runs in parallel with everything else.
+  const personalizationPromise = personalizeChildren(children, destinationDisplayName)
+
   if (hasItinerary) {
-    // Use LLM-qualified geocode queries for accurate map pins, keep user's display names for content
     const geo = await normalizePlaces(places!, destinationDisplayName, placeGeoQueries)
     placeCoords = geo.coords
 
-    // Itinerary-specific — always generate fresh, never cache
+    // Itinerary: generate content first (needed for image prompts), then images + bonus + map all in parallel
     content = await generateDestinationContent(destinationDisplayName, places!)
-    const [sectionsB64, coverB64] = await Promise.all([
-      generateSectionImages(destinationDisplayName, content),
-      generateCoverImage(destinationDisplayName),
+    const [imagesResult, bonus, logicGrid, mapImageB64Result] = await Promise.all([
+      Promise.all([
+        generateSectionImages(destinationDisplayName, content),
+        generateCoverImage(destinationDisplayName),
+      ]),
+      generateBonusContent(destinationDisplayName),
+      generateLogicGrid(destinationDisplayName),
+      generateMapImage(places!, placeCoords!),
     ])
+    Object.assign(content, bonus, { logicGrid })
+    const [sectionsB64, coverB64] = imagesResult
     const itinerarySlug = `${destinationSlug}_itinerary_${Date.now()}`
     const uploaded = await uploadImagesToStorage(itinerarySlug, coverB64, sectionsB64)
     coverImageUrl = uploaded.coverUrl
     sectionImageUrls = uploaded.sectionUrls
-  } else {
-    const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
 
-    // Check destination cache — select only non-image columns to avoid large row reads
-    const { data: cached, error: cacheReadError } = await getSupabase()
-      .from('destination_cache')
-      .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,hit_count')
-      .eq('destination_slug', cacheSlug)
-      .maybeSingle()
-
-    if (cacheReadError) console.error('Cache read error:', cacheReadError.message)
-
-    if (cached) {
-      cacheHit = true
-      content = {
-        destinationIntro: (cached as DestinationCache & { destination_intro?: string }).destination_intro ?? '',
-        sections: cached.sections_json as unknown as BookContent['sections'],
-        scavengerHuntItems: cached.scavenger_hunt_json as unknown as string[],
-        bingoGrid: cached.bingo_grid_json as unknown as string[],
-        badgeNames: cached.badge_names_json as unknown as string[],
-      }
-
-      coverImageUrl = cached.cover_image_url ?? null
-      sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
-
-      if (!coverImageUrl || sectionImageUrls.length === 0) {
-        // Images missing from cache (old entry or first run) — generate and upload
-        const [sectionsB64, coverB64] = await Promise.all([
-          sectionImageUrls.length === 0 ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
-          !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
-        ])
-        const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
-        if (uploaded.coverUrl) coverImageUrl = uploaded.coverUrl
-        if (uploaded.sectionUrls.length > 0) sectionImageUrls = uploaded.sectionUrls
-        await getSupabase()
-          .from('destination_cache')
-          .update({
-            cover_image_url: coverImageUrl,
-            section_image_urls: sectionImageUrls,
-            hit_count: (cached.hit_count ?? 0) + 1,
-          })
-          .eq('destination_slug', cacheSlug)
-      } else {
-        await getSupabase()
-          .from('destination_cache')
-          .update({ hit_count: (cached.hit_count ?? 0) + 1 })
-          .eq('destination_slug', cacheSlug)
-      }
-    } else {
-      // Cache miss — generate content + images
-      content = await generateDestinationContent(destinationDisplayName)
-      const [sectionsB64, coverB64] = await Promise.all([
-        generateSectionImages(destinationDisplayName, content),
-        generateCoverImage(destinationDisplayName),
-      ])
-
-      // Translate if needed
-      const languageNames: Record<string, string> = {
-        es: 'Spanish',
-        fr: 'French',
-        hi: 'Hindi',
-        zh: 'Chinese (Simplified)',
-        pt: 'Portuguese',
-        ta: 'Tamil',
-      }
-      if (language !== 'en' && languageNames[language]) {
-        content = await translateContent(content, language, languageNames[language])
-      }
-
-      // Upload images to Storage (not inline in DB)
-      const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
-      coverImageUrl = uploaded.coverUrl
-      sectionImageUrls = uploaded.sectionUrls
-
-      const { error: upsertError } = await getSupabase().from('destination_cache').upsert({
-        destination_slug: cacheSlug,
-        destination_display_name: destinationDisplayName,
-        destination_intro: content.destinationIntro,
-        sections_json: content.sections,
-        cover_image_url: coverImageUrl,
-        section_image_urls: sectionImageUrls,
-        scavenger_hunt_json: content.scavengerHuntItems,
-        bingo_grid_json: content.bingoGrid,
-        badge_names_json: content.badgeNames,
-        answer_key_json: Object.fromEntries(
-          content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
-        ),
-        hit_count: 1,
-      })
-      if (upsertError) console.error('Cache upsert error:', upsertError.message)
-    }
+    const childPersonalization = await personalizationPromise
+    return NextResponse.json({
+      destinationDisplayName, destinationSlug, tripDates, cacheHit,
+      content, coverImageUrl, sectionImageUrls, childPersonalization,
+      language, parentEmail, places, mapImageB64: mapImageB64Result ?? null,
+    })
   }
 
-  // Child personalization + map (if itinerary)
-  const [childPersonalization, mapImageB64] = await Promise.all([
-    personalizeChildren(children, destinationDisplayName),
-    hasItinerary ? generateMapImage(places!, placeCoords!) : Promise.resolve(null),
-  ])
+  const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
+
+  // Check destination cache — select only non-image columns to avoid large row reads
+  const { data: cached, error: cacheReadError } = await getSupabase()
+    .from('destination_cache')
+    .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,bonus_content_json,hit_count')
+    .eq('destination_slug', cacheSlug)
+    .maybeSingle()
+
+  if (cacheReadError) console.error('Cache read error:', cacheReadError.message)
+
+  if (cached) {
+    cacheHit = true
+    const bonus = (cached.bonus_content_json ?? {}) as BonusContent & {
+      crosswordWords?: BookContent['crosswordWords']
+      sillyChallenges?: string[]
+      logicGrid?: BookContent['logicGrid']
+    }
+    content = {
+      destinationIntro: (cached as DestinationCache & { destination_intro?: string }).destination_intro ?? '',
+      sections: cached.sections_json as unknown as BookContent['sections'],
+      scavengerHuntItems: cached.scavenger_hunt_json as unknown as string[],
+      bingoGrid: cached.bingo_grid_json as unknown as string[],
+      badgeNames: cached.badge_names_json as unknown as string[],
+      crosswordWords: bonus.crosswordWords,
+      sillyChallenges: bonus.sillyChallenges,
+      cryptogramPhrase: bonus.cryptogramPhrase,
+      rebusPuzzles: bonus.rebusPuzzles,
+      logicGrid: bonus.logicGrid,
+      travelTrivia: bonus.travelTrivia,
+      travelMenu: bonus.travelMenu,
+      topFiveLists: bonus.topFiveLists,
+      comicStrip: bonus.comicStrip,
+      mapDrawingChallenge: bonus.mapDrawingChallenge,
+      timeCapsuleLetter: bonus.timeCapsuleLetter,
+    }
+
+    coverImageUrl = cached.cover_image_url ?? null
+    sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
+
+    // If missing images or bonus content, fill the gaps — personalization is already running in parallel
+    const needsImages = !coverImageUrl || sectionImageUrls.length === 0
+    const needsBonus = !cached.bonus_content_json
+
+    const [imagesResult, bonusResult, logicGridResult] = await Promise.all([
+      needsImages
+        ? Promise.all([
+            sectionImageUrls.length === 0 ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
+            !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
+          ])
+        : Promise.resolve(null),
+      needsBonus ? generateBonusContent(destinationDisplayName) : Promise.resolve(null),
+      needsBonus ? generateLogicGrid(destinationDisplayName) : Promise.resolve(null),
+    ])
+
+    const updatePayload: Record<string, unknown> = { hit_count: (cached.hit_count ?? 0) + 1 }
+
+    if (imagesResult) {
+      const [sectionsB64, coverB64] = imagesResult
+      const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
+      if (uploaded.coverUrl) { coverImageUrl = uploaded.coverUrl; updatePayload.cover_image_url = coverImageUrl }
+      if (uploaded.sectionUrls.length > 0) { sectionImageUrls = uploaded.sectionUrls; updatePayload.section_image_urls = sectionImageUrls }
+    }
+
+    if (bonusResult || logicGridResult) {
+      const merged = { ...bonus, ...bonusResult, ...(logicGridResult ? { logicGrid: logicGridResult } : {}) }
+      Object.assign(content, bonusResult, logicGridResult ? { logicGrid: logicGridResult } : {})
+      updatePayload.bonus_content_json = merged
+    }
+
+    await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', cacheSlug)
+  } else {
+    // Cache miss — generate content first, then images + bonus (mini) + logic grid (gpt-4o) all in parallel
+    content = await generateDestinationContent(destinationDisplayName)
+    const [imagesResult, bonus, logicGrid] = await Promise.all([
+      Promise.all([
+        generateSectionImages(destinationDisplayName, content),
+        generateCoverImage(destinationDisplayName),
+      ]),
+      generateBonusContent(destinationDisplayName),
+      generateLogicGrid(destinationDisplayName),
+    ])
+    const [sectionsB64, coverB64] = imagesResult
+    Object.assign(content, bonus, { logicGrid })
+
+    if (language !== 'en' && languageNames[language]) {
+      content = await translateContent(content, language, languageNames[language])
+    }
+
+    const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
+    coverImageUrl = uploaded.coverUrl
+    sectionImageUrls = uploaded.sectionUrls
+
+    const bonusToCache = {
+      crosswordWords: content.crosswordWords,
+      sillyChallenges: content.sillyChallenges,
+      cryptogramPhrase: content.cryptogramPhrase,
+      rebusPuzzles: content.rebusPuzzles,
+      logicGrid: content.logicGrid,
+      travelTrivia: content.travelTrivia,
+      travelMenu: content.travelMenu,
+      topFiveLists: content.topFiveLists,
+      comicStrip: content.comicStrip,
+      mapDrawingChallenge: content.mapDrawingChallenge,
+      timeCapsuleLetter: content.timeCapsuleLetter,
+    }
+
+    const { error: upsertError } = await getSupabase().from('destination_cache').upsert({
+      destination_slug: cacheSlug,
+      destination_display_name: destinationDisplayName,
+      destination_intro: content.destinationIntro,
+      sections_json: content.sections,
+      cover_image_url: coverImageUrl,
+      section_image_urls: sectionImageUrls,
+      scavenger_hunt_json: content.scavengerHuntItems,
+      bingo_grid_json: content.bingoGrid,
+      badge_names_json: content.badgeNames,
+      bonus_content_json: bonusToCache,
+      answer_key_json: Object.fromEntries(
+        content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
+      ),
+      hit_count: 1,
+    })
+    if (upsertError) console.error('Cache upsert error:', upsertError.message)
+  }
+
+  // Personalization has been running the whole time — just await it now
+  const childPersonalization = await personalizationPromise
 
   return NextResponse.json({
     destinationDisplayName,

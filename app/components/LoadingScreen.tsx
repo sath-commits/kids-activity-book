@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { setBook } from '@/lib/bookStore'
+import { setBook, setBooks } from '@/lib/bookStore'
 
 const MESSAGES = [
   'Packing our backpacks…',
@@ -22,7 +22,22 @@ export default function LoadingScreen() {
   const [childNames, setChildNames] = useState<string[]>([])
   const [destinationName, setDestinationName] = useState('')
   const [cacheHit, setCacheHit] = useState(false)
+  const [bookProgress, setBookProgress] = useState<{ done: number; total: number } | null>(null)
   const hasFetched = useRef(false)
+
+  type FormData = {
+    destination: string
+    tripDates: { start: string; end: string } | null
+    children: { name: string; age: number; gender: string; interests?: string }[]
+    language: string
+    parentEmail: string
+    bookMode?: 'shared' | 'individual'
+    destinationSlug: string
+    displayName: string
+    cacheHit: boolean
+    places?: string[]
+    placeGeoQueries?: string[]
+  }
 
   useEffect(() => {
     const raw = sessionStorage.getItem('little-explorer-form')
@@ -31,18 +46,7 @@ export default function LoadingScreen() {
       return
     }
 
-    const form = JSON.parse(raw) as {
-      destination: string
-      tripDates: { start: string; end: string } | null
-      children: { name: string; age: number; gender: string; interests?: string }[]
-      language: string
-      parentEmail: string
-      destinationSlug: string
-      displayName: string
-      cacheHit: boolean
-      places?: string[]
-      placeGeoQueries?: string[]
-    }
+    const form = JSON.parse(raw) as FormData
 
     setChildNames(form.children.map((c) => c.name))
     setDestinationName(form.displayName)
@@ -51,48 +55,62 @@ export default function LoadingScreen() {
     if (hasFetched.current) return
     hasFetched.current = true
 
-    generateBook(form)
+    if (form.bookMode === 'individual' && form.children.length > 1) {
+      generateIndividualBooks(form)
+    } else {
+      generateBook(form, form.children)
+    }
   }, [router])
 
-  const generateBook = async (form: {
-    destination: string
-    tripDates: { start: string; end: string } | null
-    children: { name: string; age: number; gender: string; interests?: string }[]
-    language: string
-    parentEmail: string
-    destinationSlug: string
-    displayName: string
-    cacheHit: boolean
-    places?: string[]
-    placeGeoQueries?: string[]
-  }) => {
+  const callAPI = async (form: FormData, children: FormData['children']) => {
+    const res = await fetch('/api/generate-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        destinationSlug: form.destinationSlug,
+        destinationDisplayName: form.displayName,
+        tripDates: form.tripDates ?? undefined,
+        children,
+        language: form.language,
+        parentEmail: form.parentEmail,
+        places: form.places,
+        placeGeoQueries: form.placeGeoQueries,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error ?? 'Something went wrong.')
+    return data
+  }
+
+  const generateBook = async (form: FormData, children: FormData['children']) => {
     try {
-      const res = await fetch('/api/generate-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          destinationSlug: form.destinationSlug,
-          destinationDisplayName: form.displayName,
-          tripDates: form.tripDates ?? undefined,
-          children: form.children,
-          language: form.language,
-          parentEmail: form.parentEmail,
-          places: form.places,
-          placeGeoQueries: form.placeGeoQueries,
-        }),
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error ?? 'Something went wrong. Please try again.')
-        return
-      }
-
+      const data = await callAPI(form, children)
       setBook(data)
       router.push('/preview')
-    } catch {
-      setError('Failed to generate your book. Please try again.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate your book. Please try again.')
+    }
+  }
+
+  const generateIndividualBooks = async (form: FormData) => {
+    try {
+      const total = form.children.length
+      setBookProgress({ done: 0, total })
+
+      // Generate first child's book — this sets the destination cache
+      const firstBook = await callAPI(form, [form.children[0]])
+      setBookProgress({ done: 1, total })
+
+      // Generate remaining books in parallel — all will be fast cache hits
+      const remainingBooks = await Promise.all(
+        form.children.slice(1).map((child) => callAPI(form, [child]))
+      )
+      setBookProgress({ done: total, total })
+
+      setBooks([firstBook, ...remainingBooks])
+      router.push('/preview')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate your books. Please try again.')
     }
   }
 
@@ -165,10 +183,28 @@ export default function LoadingScreen() {
           <p className="text-gray-500 text-sm mb-8">📍 {destinationName}</p>
         )}
 
-        {/* Estimated time */}
-        <div className="mb-6 inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
-          {cacheHit ? '⏳ Up to 30 seconds' : '⏳ Up to 2 minutes'}
-        </div>
+        {/* Estimated time / individual progress */}
+        {bookProgress ? (
+          <div className="mb-6 space-y-1">
+            <div className="inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+              📖 Book {Math.min(bookProgress.done + 1, bookProgress.total)} of {bookProgress.total}…
+            </div>
+            <div className="flex justify-center gap-2 mt-2">
+              {Array.from({ length: bookProgress.total }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-8 h-2 rounded-full transition-all duration-500 ${
+                    i < bookProgress.done ? 'bg-green-500' : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+            {cacheHit ? '⏳ Up to 30 seconds' : '⏳ Up to 2 minutes'}
+          </div>
+        )}
 
         {/* Progress bar */}
         <div className="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">

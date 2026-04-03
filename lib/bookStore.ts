@@ -1,18 +1,23 @@
 import { GeneratedBook } from './types'
 
-// In-memory store for passing book data between loading → preview pages.
-// Client-side router.push() doesn't unload JS modules, so this survives navigation.
-// Falls back gracefully if the user refreshes (they'll be redirected to home).
-let _book: GeneratedBook | null = null
+let _books: GeneratedBook[] = []
 
 export function setBook(book: GeneratedBook) {
-  _book = book
+  _books = [book]
+}
+
+export function setBooks(books: GeneratedBook[]) {
+  _books = books
 }
 
 export function getBook(): GeneratedBook | null {
-  return _book
+  return _books[0] ?? null
+}
+
+export function getBooks(): GeneratedBook[] {
+  return _books
 }
 
 export function clearBook() {
-  _book = null
+  _books = []
 }

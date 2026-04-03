@@ -6,7 +6,6 @@ import dynamic from 'next/dynamic'
 import { GeneratedBook } from '@/lib/types'
 import { clearBook } from '@/lib/bookStore'
 
-// Load all @react-pdf/renderer usage as a single dynamic chunk (avoids ChunkLoadError)
 const PDFActions = dynamic(() => import('./PDFActions'), {
   ssr: false,
   loading: () => (
@@ -17,15 +16,20 @@ const PDFActions = dynamic(() => import('./PDFActions'), {
 })
 
 interface PreviewScreenProps {
-  book: GeneratedBook
+  books: GeneratedBook[]
 }
 
-export default function PreviewScreen({ book }: PreviewScreenProps) {
+export default function PreviewScreen({ books }: PreviewScreenProps) {
   const router = useRouter()
-  const [emailSent, setEmailSent] = useState(false)
-  const [emailLoading, setEmailLoading] = useState(false)
-  const [emailError, setEmailError] = useState<string | null>(null)
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null)
+  const [activeIdx, setActiveIdx] = useState(0)
+  const [pdfBlobs, setPdfBlobs] = useState<(Blob | null)[]>(books.map(() => null))
+  const [emailSent, setEmailSent] = useState<boolean[]>(books.map(() => false))
+  const [emailLoading, setEmailLoading] = useState<boolean[]>(books.map(() => false))
+  const [emailErrors, setEmailErrors] = useState<(string | null)[]>(books.map(() => null))
+
+  const book = books[activeIdx]
+  const pdfBlob = pdfBlobs[activeIdx]
+  const isIndividual = books.length > 1
 
   const childNames = book.childPersonalization.map((c) => c.name)
   const namesDisplay =
@@ -33,12 +37,18 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
       ? `${childNames[0]}`
       : `${childNames.slice(0, -1).join(', ')} & ${childNames[childNames.length - 1]}`
 
-  const fileName = `${book.destinationSlug}-explorer-book.pdf`
+  const fileName = isIndividual
+    ? `${book.destinationSlug}-${book.childPersonalization[0]?.name?.toLowerCase()}-explorer.pdf`
+    : `${book.destinationSlug}-explorer-book.pdf`
+
+  const handleBlobReady = (blob: Blob | null) => {
+    setPdfBlobs((prev) => prev.map((b, i) => (i === activeIdx ? blob : b)))
+  }
 
   const handleEmailSend = async () => {
     if (!pdfBlob) return
-    setEmailLoading(true)
-    setEmailError(null)
+    setEmailLoading((prev) => prev.map((v, i) => (i === activeIdx ? true : v)))
+    setEmailErrors((prev) => prev.map((v, i) => (i === activeIdx ? null : v)))
 
     try {
       const arrayBuffer = await pdfBlob.arrayBuffer()
@@ -60,14 +70,14 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
 
       if (!res.ok) {
         const data = await res.json()
-        setEmailError(data.error ?? 'Failed to send email.')
+        setEmailErrors((prev) => prev.map((v, i) => (i === activeIdx ? (data.error ?? 'Failed to send email.') : v)))
       } else {
-        setEmailSent(true)
+        setEmailSent((prev) => prev.map((v, i) => (i === activeIdx ? true : v)))
       }
     } catch {
-      setEmailError('Failed to send email. Please try again.')
+      setEmailErrors((prev) => prev.map((v, i) => (i === activeIdx ? 'Failed to send email. Please try again.' : v)))
     } finally {
-      setEmailLoading(false)
+      setEmailLoading((prev) => prev.map((v, i) => (i === activeIdx ? false : v)))
     }
   }
 
@@ -75,12 +85,20 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-10 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="text-5xl mb-3">🎉</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Your book is ready!</h1>
-          <p className="text-green-700 font-medium">
-            {namesDisplay}&apos;s {book.destinationDisplayName} Explorer Adventure
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isIndividual ? 'Your books are ready!' : 'Your book is ready!'}
+          </h1>
+          {isIndividual ? (
+            <p className="text-green-700 font-medium">
+              {books.length} personalized books for {book.destinationDisplayName}
+            </p>
+          ) : (
+            <p className="text-green-700 font-medium">
+              {namesDisplay}&apos;s {book.destinationDisplayName} Explorer Adventure
+            </p>
+          )}
           <p className="text-gray-500 text-sm mt-1">
             {book.content.sections.length} sections · {childNames.length} explorer{childNames.length > 1 ? 's' : ''}
           </p>
@@ -90,6 +108,31 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
             </span>
           )}
         </div>
+
+        {/* Child tabs for individual mode */}
+        {isIndividual && (
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+            {books.map((b, i) => {
+              const name = b.childPersonalization[0]?.name ?? `Book ${i + 1}`
+              const age = b.childPersonalization[0]?.age
+              return (
+                <button
+                  key={i}
+                  onClick={() => setActiveIdx(i)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+                    activeIdx === i
+                      ? 'bg-green-600 text-white shadow-md'
+                      : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-green-300'
+                  }`}
+                >
+                  🎒 {name}
+                  {age && <span className="ml-1 opacity-70 font-normal">age {age}</span>}
+                  {pdfBlobs[i] && <span className="ml-1">✓</span>}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         {/* Preview cards */}
         <div className="grid grid-cols-2 gap-3 mb-8">
@@ -137,7 +180,21 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
 
         {/* Book summary */}
         <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-          <h2 className="font-bold text-gray-700 mb-3 text-sm">📋 What&apos;s inside:</h2>
+          <h2 className="font-bold text-gray-700 mb-3 text-sm">
+            📋 {isIndividual ? `${book.childPersonalization[0]?.name}'s book:` : "What's inside:"}
+          </h2>
+          {isIndividual && (
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {book.childPersonalization[0]?.keywords?.map((kw) => (
+                <span key={kw} className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
+                  {kw}
+                </span>
+              ))}
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                age {book.childPersonalization[0]?.age} level activities
+              </span>
+            </div>
+          )}
           <div className="space-y-1">
             {book.content.sections.map((s) => (
               <div key={s.id} className="flex items-center gap-2 text-sm text-gray-600">
@@ -158,15 +215,16 @@ export default function PreviewScreen({ book }: PreviewScreenProps) {
           </div>
         </div>
 
-        {/* PDF actions (download + email) */}
+        {/* PDF actions — keyed by activeIdx so it re-mounts when tab switches */}
         <PDFActions
+          key={activeIdx}
           book={book}
           fileName={fileName}
-          onBlobReady={setPdfBlob}
+          onBlobReady={handleBlobReady}
           onEmailSend={handleEmailSend}
-          emailSent={emailSent}
-          emailLoading={emailLoading}
-          emailError={emailError}
+          emailSent={emailSent[activeIdx]}
+          emailLoading={emailLoading[activeIdx]}
+          emailError={emailErrors[activeIdx]}
           pdfBlob={pdfBlob}
         />
 

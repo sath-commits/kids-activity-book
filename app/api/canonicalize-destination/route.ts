@@ -15,9 +15,10 @@ export async function POST(req: NextRequest) {
     const trimmed = destination.trim().slice(0, 200)
 
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0,
       max_tokens: 200,
+      response_format: { type: 'json_object' },
       messages: [
         {
           role: 'system',

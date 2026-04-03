@@ -37,6 +37,14 @@ export interface SectionContent {
   imagePrompt: string
 }
 
+export interface LogicGrid {
+  intro: string
+  people: string[]
+  options: string[]
+  clues: string[]
+  solution: Record<string, string>
+}
+
 export interface BookContent {
   destinationIntro: string
   sections: SectionContent[]
@@ -45,6 +53,16 @@ export interface BookContent {
   badgeNames: string[]
   crosswordWords?: { word: string; clue: string }[]
   sillyChallenges?: string[]
+  // Bonus activity content (cached per destination)
+  cryptogramPhrase?: string
+  rebusPuzzles?: { equation: string; answer: string }[]
+  logicGrid?: LogicGrid
+  travelTrivia?: { question: string; answer: string }[]
+  travelMenu?: { category: string; items: { name: string; description: string; price: string }[] }[]
+  topFiveLists?: { title: string; items: string[] }[]
+  comicStrip?: { title: string; panels: { scene: string }[] }
+  mapDrawingChallenge?: { instructions: string[]; landmarks: string[] }
+  timeCapsuleLetter?: { prompts: string[] }
 }
 
 export interface GeneratedBook {
@@ -68,6 +86,7 @@ export interface FormState {
   children: Child[]
   language: string
   parentEmail: string
+  bookMode?: 'shared' | 'individual'
   places?: string[]
   placeGeoQueries?: string[]
 }

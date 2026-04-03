@@ -37,6 +37,7 @@ export default function BookForm() {
   const [tripStart, setTripStart] = useState('')
   const [tripEnd, setTripEnd] = useState('')
   const [children, setChildren] = useState<Child[]>([defaultChild()])
+  const [bookMode, setBookMode] = useState<'shared' | 'individual'>('shared')
   const [language, setLanguage] = useState('en')
   const [parentEmail, setParentEmail] = useState('')
   const [disclaimerChecked, setDisclaimerChecked] = useState(false)
@@ -132,6 +133,7 @@ export default function BookForm() {
           children,
           language,
           parentEmail,
+          bookMode,
           places: parsedPlaces,
           placeGeoQueries: parsedGeoQueries,
           destinationSlug: canonData.slug,
@@ -149,6 +151,7 @@ export default function BookForm() {
         children,
         language,
         parentEmail,
+        bookMode,
         destinationSlug: canonData.slug,
         displayName: canonData.displayName,
         cacheHit: canonData.cacheHit,
@@ -172,6 +175,7 @@ export default function BookForm() {
       children,
       language,
       parentEmail,
+      bookMode,
       places: correctedPlaces,
       placeGeoQueries: verification.parsedGeoQueries,
       destinationSlug: verification.slug,
@@ -191,6 +195,7 @@ export default function BookForm() {
       children,
       language,
       parentEmail,
+      bookMode,
       places: verification.parsedPlaces,
       placeGeoQueries: verification.parsedGeoQueries,
       destinationSlug: verification.slug,
@@ -313,7 +318,61 @@ export default function BookForm() {
         </div>
       </section>
 
-      {/* Section C: Email */}
+      {/* Section C: Book mode (only shown for 2+ children) */}
+      {children.length >= 2 && (
+        <section>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-2xl">📚</span>
+            <h2 className="text-xl font-bold text-gray-800">Book format</h2>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setBookMode('shared')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                bookMode === 'shared'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="text-2xl mb-1">📚</div>
+              <div className={`font-bold text-sm mb-1 ${bookMode === 'shared' ? 'text-green-700' : 'text-gray-700'}`}>
+                One book for everyone
+              </div>
+              <div className="text-xs text-gray-500 leading-snug">
+                All explorers share one book. Great for kids close in age.
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setBookMode('individual')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                bookMode === 'individual'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="text-2xl mb-1">🎒</div>
+              <div className={`font-bold text-sm mb-1 ${bookMode === 'individual' ? 'text-green-700' : 'text-gray-700'}`}>
+                One book per explorer
+              </div>
+              <div className="text-xs text-gray-500 leading-snug">
+                Each child gets their own book, age-matched puzzles and personalized just for them.
+              </div>
+            </button>
+          </div>
+
+          {bookMode === 'individual' && (
+            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
+              ✨ Each book will have difficulty levels matched to that child&apos;s age and activities tailored to their interests.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* Section D: Email */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <span className="text-2xl">📬</span>

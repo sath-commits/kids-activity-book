@@ -28,6 +28,7 @@ export interface DestinationCache {
   bingo_grid_json: string[]
   badge_names_json: string[]
   answer_key_json: Record<string, string>
+  bonus_content_json?: Record<string, unknown> | null
   hit_count: number
   created_at: string
 }
@@ -54,4 +55,20 @@ export interface BookContent {
   bingoGrid: string[]
   badgeNames: string[]
   crosswordWords?: { word: string; clue: string }[]
+  sillyChallenges?: string[]
+  cryptogramPhrase?: string
+  rebusPuzzles?: { equation: string; answer: string }[]
+  logicGrid?: {
+    intro: string
+    people: string[]
+    options: string[]
+    clues: string[]
+    solution: Record<string, string>
+  }
+  travelTrivia?: { question: string; answer: string }[]
+  travelMenu?: { category: string; items: { name: string; description: string; price: string }[] }[]
+  topFiveLists?: { title: string; items: string[] }[]
+  comicStrip?: { title: string; panels: { scene: string }[] }
+  mapDrawingChallenge?: { instructions: string[]; landmarks: string[] }
+  timeCapsuleLetter?: { prompts: string[] }
 }
