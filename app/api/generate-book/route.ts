@@ -54,8 +54,94 @@ type BonusContent = Pick<BookContent,
   'travelMenu' | 'topFiveLists' | 'comicStrip' | 'mapDrawingChallenge' | 'timeCapsuleLetter'
 >
 
+interface AudienceProfile {
+  cacheKey: string
+  summary: string
+  promptBlock: string
+  ageFloor: number
+  ageCeiling: number
+}
+
+function normalizeInterestWords(children: Child[]): string[] {
+  const seen = new Set<string>()
+  const words: string[] = []
+
+  for (const child of children) {
+    const raw = child.interests ?? ''
+    for (const part of raw.split(/[,\n/|]+/)) {
+      const cleaned = part.trim().toLowerCase().replace(/\s+/g, ' ')
+      if (!cleaned) continue
+      if (seen.has(cleaned)) continue
+      seen.add(cleaned)
+      words.push(cleaned)
+    }
+  }
+
+  return words.slice(0, 6)
+}
+
+function ageBandLabel(minAge: number, maxAge: number): string {
+  if (maxAge <= 4) return 'preschool'
+  if (maxAge <= 7 && minAge >= 5) return 'young-elementary'
+  if (maxAge <= 10 && minAge >= 8) return 'elementary'
+  if (minAge >= 11) return 'older-kids'
+  return 'mixed-ages'
+}
+
+function buildAudienceProfile(children: Child[]): AudienceProfile {
+  const ages = children.map((child) => child.age)
+  const minAge = Math.min(...ages)
+  const maxAge = Math.max(...ages)
+  const interests = normalizeInterestWords(children)
+  const ageBand = ageBandLabel(minAge, maxAge)
+  const readingLevel =
+    maxAge <= 5
+      ? 'very short sentences, concrete vocabulary, lots of sensory wording'
+      : maxAge <= 7
+      ? 'simple but vivid sentences with playful comparisons'
+      : maxAge <= 10
+      ? 'clear elementary reading level with real facts and fun comparisons'
+      : 'richer elementary-to-middle-grade wording with slightly deeper explanations'
+  const challengeLevel =
+    maxAge <= 5
+      ? 'very easy observation, matching, counting, and drawing prompts'
+      : maxAge <= 7
+      ? 'easy puzzles, searching, simple reasoning, and movement prompts'
+      : maxAge <= 10
+      ? 'moderate puzzles, deduction, trivia, and creative tasks'
+      : 'the upper end of kid-friendly puzzles, with more reasoning and richer facts'
+
+  const interestLine = interests.length > 0
+    ? `Top interests to weave in naturally when relevant: ${interests.join(', ')}.`
+    : 'No strong interests were supplied, so keep the content broadly adventurous and destination-led.'
+
+  return {
+    cacheKey: `${ageBand}|${minAge}-${maxAge}|${interests.join('|') || 'general'}`,
+    summary: `${children.length} child${children.length > 1 ? 'ren' : ''}, ages ${minAge}-${maxAge}, interests: ${interests.join(', ') || 'general exploration'}`,
+    promptBlock: `AUDIENCE PROFILE:
+- Children: ${children.length}
+- Age range: ${minAge}-${maxAge}
+- Reading level target: ${readingLevel}
+- Puzzle/challenge target: ${challengeLevel}
+- ${interestLine}
+
+PERSONALIZATION RULES:
+- The core destination facts must stay accurate, but examples, comparisons, scavenger prompts, riddles, and activity framing should reflect this age range.
+- Use the stated interests to influence the angle of the content whenever it feels natural. For example:
+  - animal lovers: wildlife spotting, habitats, tracks, birdwatching
+  - vehicle/train lovers: routes, trails, boats, roads, transport, motion
+  - art/drawing lovers: colors, shapes, sketching, noticing patterns
+  - dinosaurs/science lovers: geology, fossils, deep time, landforms, cause-and-effect explanations
+  - fantasy/imagination lovers: role-play, explorer missions, magical-feeling comparisons while staying factual
+- Do not just mention the interests once. Let them shape the choice of examples, challenges, and game prompts across the book.
+- Keep everything appropriate for the full age range if siblings are sharing one book.`,
+    ageFloor: minAge,
+    ageCeiling: maxAge,
+  }
+}
+
 // Non-logic-grid bonus content — uses mini (no complex reasoning needed)
-async function generateBonusContent(displayName: string): Promise<BonusContent> {
+async function generateBonusContent(displayName: string, audience: AudienceProfile): Promise<BonusContent> {
   try {
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
@@ -70,6 +156,8 @@ async function generateBonusContent(displayName: string): Promise<BonusContent> 
         {
           role: 'user',
           content: `Create bonus activity content for a kids activity book about: ${displayName}
+
+${audience.promptBlock}
 
 Return a JSON object with this exact schema:
 {
@@ -127,7 +215,8 @@ Rules:
 - rebusPuzzles: exactly 6 compound word puzzles using destination-relevant words. "equation" shows the parts (e.g. "RAIN + FOREST"), "answer" is combined (e.g. "RAINFOREST").
 - travelTrivia: exactly 8 questions, mix easy and medium, answers 1-5 words.
 - travelMenu: exactly 3 categories (Starters, Mains, Desserts), 3 items each, silly destination-themed names.
-- comicStrip: exactly 6 panels, scene descriptions 4-8 words.`,
+- comicStrip: exactly 6 panels, scene descriptions 4-8 words.
+- Make the bonus pages feel tailored to the audience profile above, especially in topic choice and difficulty.`,
         },
       ],
     })
@@ -146,7 +235,7 @@ Rules:
 
 // Logic grid — kept on gpt-4o because it requires consistent logical reasoning
 // (clues must uniquely and correctly solve to the given answer)
-async function generateLogicGrid(displayName: string): Promise<BookContent['logicGrid'] | undefined> {
+async function generateLogicGrid(displayName: string, audience: AudienceProfile): Promise<BookContent['logicGrid'] | undefined> {
   try {
     const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-4o',
@@ -161,6 +250,8 @@ async function generateLogicGrid(displayName: string): Promise<BookContent['logi
         {
           role: 'user',
           content: `Create a logic grid puzzle for a kids activity book about: ${displayName}
+
+${audience.promptBlock}
 
 Three explorer friends each spotted one amazing thing first. Use clues to figure out who saw what.
 
@@ -177,7 +268,8 @@ Rules:
 - options must be 3 things specific and interesting at ${displayName} (e.g. animals, landmarks, natural features)
 - clues must each eliminate at least one possibility — together they must lead to EXACTLY ONE solution
 - verify: work through the clues yourself before returning to confirm the solution is correct and unique
-- clues should be fun for kids, not too abstract`,
+- clues should be fun for kids, not too abstract
+- adjust clue complexity to the audience profile above`,
         },
       ],
     })
@@ -190,7 +282,7 @@ Rules:
   }
 }
 
-async function generateDestinationContent(displayName: string, places?: string[]): Promise<BookContent> {
+async function generateDestinationContent(displayName: string, audience: AudienceProfile, places?: string[]): Promise<BookContent> {
   const sectionsInstruction = places && places.length > 0
     ? `Generate sections for ONLY these specific places the family will visit (in this order): ${places.join(', ')}. Do not add or substitute other attractions — only cover what they listed.`
     : `Generate 4-8 sections depending on how many distinct notable attractions the destination has. If it is a city, pick the most iconic kid-friendly landmarks/activities. If it is a national park, each major attraction/trail/feature gets a section. If it is a zoo or museum, pick themed zones.`
@@ -210,6 +302,8 @@ async function generateDestinationContent(displayName: string, places?: string[]
         content: `Create a junior explorer activity booklet content for: ${displayName}
 
 If any place names in the list appear to be misspelled, interpret them as the closest real landmark or attraction at the destination.
+
+${audience.promptBlock}
 
 Return a JSON object with this exact schema (no markdown, no code fences, pure JSON):
 {
@@ -241,7 +335,14 @@ Return a JSON object with this exact schema (no markdown, no code fences, pure J
   "crosswordWords": [{"word": "UPPERCASE_WORD_RELATED_TO_DESTINATION", "clue": "Kid-friendly clue"}]
 }
 
-${sectionsInstruction} Badge names array must have the same length as sections array. For crosswordWords, generate exactly 12 words suitable for a crossword puzzle. Words must use only capital letters A-Z, no spaces or punctuation, and be 3-12 letters long.`,
+${sectionsInstruction} Badge names array must have the same length as sections array. For crosswordWords, generate exactly 12 words suitable for a crossword puzzle. Words must use only capital letters A-Z, no spaces or punctuation, and be 3-12 letters long.
+
+Additional personalization rules:
+- Facts must stay accurate, but examples and comparisons should match the audience profile.
+- For younger kids, prefer shorter facts, more concrete observations, and simpler scavenger tasks.
+- For older kids, allow deeper science/history explanations and more thoughtful questions.
+- Weave in the listed interests repeatedly across facts, scavenger hunts, bingo, challenges, badge names, and crossword clues when it fits the destination naturally.
+- Avoid generic filler that could fit any kid. The activities should feel noticeably tuned to this audience profile.`,
       },
     ],
   })
@@ -559,6 +660,7 @@ export async function POST(req: NextRequest) {
   const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail, places, placeGeoQueries } = body
   const hasItinerary = Array.isArray(places) && places.length > 0
   const coverChild = children.length === 1 ? children[0] : null
+  const audience = buildAudienceProfile(children)
 
   const languageNames: Record<string, string> = {
     es: 'Spanish', fr: 'French', zh: 'Chinese (Simplified)', pt: 'Portuguese',
@@ -581,6 +683,7 @@ export async function POST(req: NextRequest) {
     const itineraryHash = hashStr([
       destinationSlug,
       language,
+      audience.cacheKey,
       ...normalizedPlaces.map((place) => place.trim().toLowerCase()),
     ].join('|')).toString(16)
     const itineraryCacheSlug = `${destinationSlug}_itinerary_${itineraryHash}`
@@ -609,8 +712,8 @@ export async function POST(req: NextRequest) {
               !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
             ])
           : Promise.resolve(null),
-        needsBonus ? generateBonusContent(destinationDisplayName) : Promise.resolve(null),
-        needsBonus ? generateLogicGrid(destinationDisplayName) : Promise.resolve(null),
+        needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),
+        needsBonus ? generateLogicGrid(destinationDisplayName, audience) : Promise.resolve(null),
       ])
 
       const updatePayload: Record<string, unknown> = { hit_count: (cached.hit_count ?? 0) + 1 }
@@ -633,14 +736,14 @@ export async function POST(req: NextRequest) {
 
       await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', itineraryCacheSlug)
     } else {
-      content = await generateDestinationContent(destinationDisplayName, normalizedPlaces)
+      content = await generateDestinationContent(destinationDisplayName, audience, normalizedPlaces)
       const [imagesResult, bonus, logicGrid] = await Promise.all([
         Promise.all([
           generateSectionImages(destinationDisplayName, content),
           generateCoverImage(destinationDisplayName),
         ]),
-        generateBonusContent(destinationDisplayName),
-        generateLogicGrid(destinationDisplayName),
+        generateBonusContent(destinationDisplayName, audience),
+        generateLogicGrid(destinationDisplayName, audience),
       ])
       Object.assign(content, bonus, { logicGrid })
 
@@ -685,7 +788,9 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const cacheSlug = language === 'en' ? destinationSlug : `${destinationSlug}_${language}`
+  const audienceHash = hashStr(audience.cacheKey).toString(16)
+  const cacheSlugBase = `${destinationSlug}_aud_${audienceHash}`
+  const cacheSlug = language === 'en' ? cacheSlugBase : `${cacheSlugBase}_${language}`
 
   // Check destination cache — select only non-image columns to avoid large row reads
   const { data: cached, error: cacheReadError } = await getSupabase()
@@ -715,8 +820,8 @@ export async function POST(req: NextRequest) {
             !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
           ])
         : Promise.resolve(null),
-      needsBonus ? generateBonusContent(destinationDisplayName) : Promise.resolve(null),
-      needsBonus ? generateLogicGrid(destinationDisplayName) : Promise.resolve(null),
+      needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),
+      needsBonus ? generateLogicGrid(destinationDisplayName, audience) : Promise.resolve(null),
     ])
 
     const updatePayload: Record<string, unknown> = { hit_count: (cached.hit_count ?? 0) + 1 }
@@ -737,14 +842,14 @@ export async function POST(req: NextRequest) {
     await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', cacheSlug)
   } else {
     // Cache miss — generate content first, then images + bonus (mini) + logic grid (gpt-4o) all in parallel
-    content = await generateDestinationContent(destinationDisplayName)
+    content = await generateDestinationContent(destinationDisplayName, audience)
     const [imagesResult, bonus, logicGrid] = await Promise.all([
       Promise.all([
         generateSectionImages(destinationDisplayName, content),
         generateCoverImage(destinationDisplayName),
       ]),
-      generateBonusContent(destinationDisplayName),
-      generateLogicGrid(destinationDisplayName),
+      generateBonusContent(destinationDisplayName, audience),
+      generateLogicGrid(destinationDisplayName, audience),
     ])
     const [sectionsB64, coverB64] = imagesResult
     Object.assign(content, bonus, { logicGrid })
