@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface TimeCapsulePageProps {
   timeCapsuleLetter: {
@@ -121,18 +121,16 @@ const s = StyleSheet.create({
 })
 
 export default function TimeCapsulePage({ timeCapsuleLetter, pageNumber }: TimeCapsulePageProps) {
-  const { prompts } = timeCapsuleLetter
+  const prompts = timeCapsuleLetter.prompts.slice(0, 6)
 
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: '#8b5cf6' }]} />
-      <View style={{ position: 'absolute', top: 22, right: 28 }}>
-        <MascotWithBubble
-          message={"Write honestly!\nFuture-you will\nlove reading this\nin 5 years!"}
-          bubbleSide="left"
-          size={55}
-        />
-      </View>
+      <PageGuide
+        message={"Write honestly. Future-you will love reading this in 5 years."}
+        side="right"
+        accentColor="#8b5cf6"
+      />
 
       <Text style={[styles.h1, { color: '#7c3aed' }]}>Time Capsule Letter</Text>
 

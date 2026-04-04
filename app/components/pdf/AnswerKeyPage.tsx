@@ -1,7 +1,7 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { SectionContent } from '@/lib/types'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface AnswerKeyPageProps {
   sections: SectionContent[]
@@ -45,9 +45,11 @@ const s = StyleSheet.create({
 export default function AnswerKeyPage({ sections, pageNumber }: AnswerKeyPageProps) {
   return (
     <Page size="A4" style={styles.page}>
-      <View style={{ position: 'absolute', top: 22, right: 28 }}>
-        <MascotWithBubble message={"No peeking until\nyou've tried your\nvery best first!"} size={55} bubbleSide="left" />
-      </View>
+      <PageGuide
+        message={"No peeking until you've tried your very best first."}
+        side="right"
+        accentColor={colors.primary}
+      />
       <Text style={styles.h1}>Answer Key</Text>
       <Text style={s.intro}>For parents and rangers — answers to the "Think About It" questions:</Text>
 

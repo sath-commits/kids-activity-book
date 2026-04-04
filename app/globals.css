@@ -2,15 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'NunitoCustom';
+  src: url('/fonts/Nunito-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'NunitoCustom';
+  src: url('/fonts/Nunito-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-deep: #355843;
+  --brand: #53a26b;
+  --brand-soft: #e8f9ef;
+  --sunset: #f3b655;
+  --sunset-deep: #a66318;
+  --sky-soft: #e8f2fb;
+  --ink-strong: #223428;
+  --ink-soft: #5d6b62;
+  --paper: #fffdf8;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(232, 249, 239, 0.75), transparent 32%),
+    linear-gradient(180deg, #f8fbf7 0%, #fffdf8 42%, #ffffff 100%);
+  font-family: 'NunitoCustom', 'Trebuchet MS', 'Avenir Next', sans-serif;
+}
+
+.font-display {
+  font-family: 'NunitoCustom', 'Trebuchet MS', 'Avenir Next', sans-serif;
 }
 
 @layer utilities {

@@ -159,6 +159,10 @@ const s = StyleSheet.create({
 })
 
 export default function SectionActivityPage({ section, childPersonalization, pageNumber }: SectionActivityPageProps) {
+  const funFacts = section.funFacts?.slice(0, 5) ?? []
+  const whatDoYouSee = section.whatDoYouSee?.slice(0, 4) ?? []
+  const scavengerItems = (section.sectionScavengerHunt ?? section.findThese ?? []).slice(0, 4)
+
   return (
     <Page size="A4" style={styles.page}>
       {/* Header */}
@@ -170,7 +174,7 @@ export default function SectionActivityPage({ section, childPersonalization, pag
       <View style={s.didYouKnow}>
         <Text style={s.didYouKnowLabel}>Did You Know?</Text>
         <Text style={s.historyText}>{section.historyBlurb}</Text>
-        {section.funFacts?.map((fact, i) => (
+        {funFacts.map((fact, i) => (
           <View key={i} style={s.factRow}>
             <Text style={s.factBullet}>•</Text>
             <Text style={s.historyText}>{fact}</Text>
@@ -182,7 +186,7 @@ export default function SectionActivityPage({ section, childPersonalization, pag
         {/* Left column */}
         <View style={s.col}>
           <Text style={s.sectionLabel}>What Do You See?</Text>
-          {section.whatDoYouSee.map((item, i) => (
+          {whatDoYouSee.map((item, i) => (
             <View key={i} style={s.checkRow}>
               <View style={s.checkBox} />
               <Text style={s.checkText}>{item}</Text>
@@ -193,7 +197,7 @@ export default function SectionActivityPage({ section, childPersonalization, pag
         {/* Right column */}
         <View style={s.col}>
           <Text style={s.sectionLabel}>Scavenger Hunt!</Text>
-          {(section.sectionScavengerHunt ?? section.findThese).map((item, i) => (
+          {scavengerItems.map((item, i) => (
             <View key={i} style={s.checkRow}>
               <View style={s.checkBox} />
               <Text style={s.checkText}>{item}</Text>

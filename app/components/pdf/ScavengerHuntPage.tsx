@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface ScavengerHuntPageProps {
   items: string[]
@@ -61,9 +61,11 @@ export default function ScavengerHuntPage({ items, destinationDisplayName, pageN
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.teal }]} />
-      <View style={{ position: 'absolute', top: 22, right: 28 }}>
-        <MascotWithBubble message={"Find each item\nand sketch what\nyou spotted!"} size={55} bubbleSide="left" />
-      </View>
+      <PageGuide
+        message={"Find each item and sketch what you spotted."}
+        side="right"
+        accentColor={colors.teal}
+      />
       <Text style={[styles.h1, { color: colors.teal }]}>Scavenger Hunt</Text>
       <Text style={s.intro}>
         Can you find all of these at {destinationDisplayName}? Check the box and sketch what you found!

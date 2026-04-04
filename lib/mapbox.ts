@@ -1,5 +1,6 @@
 const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN!
 const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY!
+const MAX_DESTINATION_DISTANCE_KM = 220
 
 function haversineKm(lon1: number, lat1: number, lon2: number, lat2: number): number {
   const R = 6371
@@ -14,6 +15,12 @@ function haversineKm(lon1: number, lat1: number, lon2: number, lat2: number): nu
 interface GeocodedPlace {
   canonical: string
   coords: [number, number]
+}
+
+interface MapboxFeature {
+  center?: [number, number]
+  text?: string
+  place_name?: string
 }
 
 async function geocodeDestination(destination: string): Promise<[number, number] | null> {
@@ -38,10 +45,7 @@ async function geocodePlaceGoogle(query: string, proximity: [number, number]): P
     if (data.status !== 'OK' || !data.results?.[0]) return null
     const loc = data.results[0].geometry.location as { lat: number; lng: number }
     const coords: [number, number] = [loc.lng, loc.lat]
-    // Reject if result is more than 3 degrees away from destination
-    const dLon = Math.abs(coords[0] - proximity[0])
-    const dLat = Math.abs(coords[1] - proximity[1])
-    if (dLon > 3 || dLat > 3) return null
+    if (haversineKm(proximity[0], proximity[1], coords[0], coords[1]) > MAX_DESTINATION_DISTANCE_KM) return null
     const canonical = (data.results[0].address_components?.[0]?.long_name as string) ?? query.split(',')[0].trim()
     return { canonical, coords }
   } catch {
@@ -51,22 +55,34 @@ async function geocodePlaceGoogle(query: string, proximity: [number, number]): P
 
 async function geocodePlace(query: string, destination: string, proximity?: [number, number]): Promise<GeocodedPlace | null> {
   const proximityParam = proximity ? `&proximity=${proximity[0]},${proximity[1]}` : ''
-  // Hard-constrain to a ~330km bbox around the destination to prevent pins landing in wrong regions
+  // Hard-constrain to a broad bbox around the destination to prevent pins landing in the wrong region.
   const bboxParam = proximity
-    ? `&bbox=${(proximity[0] - 3).toFixed(4)},${(proximity[1] - 3).toFixed(4)},${(proximity[0] + 3).toFixed(4)},${(proximity[1] + 3).toFixed(4)}`
+    ? `&bbox=${(proximity[0] - 4).toFixed(4)},${(proximity[1] - 4).toFixed(4)},${(proximity[0] + 4).toFixed(4)},${(proximity[1] + 4).toFixed(4)}`
     : ''
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?limit=1${proximityParam}${bboxParam}&access_token=${MAPBOX_TOKEN}`
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?limit=5${proximityParam}${bboxParam}&access_token=${MAPBOX_TOKEN}`
   try {
     const res = await fetch(url)
     const data = await res.json()
-    const feature = data.features?.[0]
+    const features: MapboxFeature[] = Array.isArray(data.features) ? data.features : []
+    const feature = proximity
+      ? features
+          .map((item: MapboxFeature) => {
+            const coords = item.center
+            if (!coords) return null
+            return {
+              item,
+              distanceKm: haversineKm(proximity[0], proximity[1], coords[0], coords[1]),
+            }
+          })
+          .filter((item): item is { item: MapboxFeature & { center: [number, number] }; distanceKm: number } => {
+            return item !== null && item.distanceKm <= MAX_DESTINATION_DISTANCE_KM
+          })
+          .sort((a: { distanceKm: number }, b: { distanceKm: number }) => a.distanceKm - b.distanceKm)[0]?.item
+      : features[0]
+
     if (feature) {
       const coords = feature.center as [number, number]
-      // Reject if result is more than 100km from destination centroid — prevents
-      // Mapbox returning a more-prominent same-named place in a neighbouring city/region
-      if (proximity && haversineKm(proximity[0], proximity[1], coords[0], coords[1]) > 100) {
-        // fall through to Google
-      } else {
+      if (!proximity || haversineKm(proximity[0], proximity[1], coords[0], coords[1]) <= MAX_DESTINATION_DISTANCE_KM) {
         const canonical = (feature.text as string) ?? (feature.place_name as string).split(',')[0].trim()
         return { canonical, coords }
       }

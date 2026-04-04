@@ -82,28 +82,28 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-10 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(232,249,239,0.92),_rgba(255,250,238,0.94)_48%,_rgba(255,255,255,1)_100%)] py-10 px-4">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-8">
           <div className="text-5xl mb-3">🎉</div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="font-display text-4xl font-bold text-[var(--ink-strong)] mb-2">
             {isIndividual ? 'Your books are ready!' : 'Your book is ready!'}
           </h1>
           {isIndividual ? (
-            <p className="text-green-700 font-medium">
+            <p className="text-[var(--brand-deep)] font-medium">
               {books.length} personalized books for {book.destinationDisplayName}
             </p>
           ) : (
-            <p className="text-green-700 font-medium">
+            <p className="text-[var(--brand-deep)] font-medium">
               {namesDisplay}&apos;s {book.destinationDisplayName} Explorer Adventure
             </p>
           )}
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-[var(--ink-soft)] text-sm mt-1">
             {book.content.sections.length} sections · {childNames.length} explorer{childNames.length > 1 ? 's' : ''}
           </p>
           {book.cacheHit && (
-            <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+            <span className="inline-block mt-2 px-3 py-1 bg-[var(--brand-soft)] text-[var(--brand-deep)] text-xs rounded-full">
               ⚡ Delivered from cache
             </span>
           )}
@@ -122,7 +122,7 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
                   className={`flex-shrink-0 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
                     activeIdx === i
                       ? 'bg-green-600 text-white shadow-md'
-                      : 'bg-white border-2 border-gray-200 text-gray-600 hover:border-green-300'
+                      : 'bg-white/90 border-2 border-white text-[var(--ink-soft)] hover:border-[rgba(83,162,107,0.3)] shadow-sm'
                   }`}
                 >
                   🎒 {name}
@@ -135,43 +135,45 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
         )}
 
         {/* Preview cards */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
+        <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2">
+          <div className="rounded-[1.75rem] border border-white/80 overflow-hidden bg-white/88 shadow-[0_18px_45px_rgba(36,67,52,0.12)]">
             {book.coverImageUrl ? (
               <img
                 src={book.coverImageUrl}
                 alt="Cover page preview"
                 className="w-full object-cover"
-                style={{ maxHeight: 220 }}
+                style={{ maxHeight: 320 }}
               />
             ) : (
-              <div className="h-[220px] bg-green-50 flex items-center justify-center">
+              <div className="h-[320px] bg-[var(--brand-soft)] flex items-center justify-center">
                 <span className="text-4xl">🌲</span>
               </div>
             )}
-            <div className="p-3 text-center">
-              <p className="text-xs font-semibold text-gray-600">Cover Page</p>
+            <div className="p-4 text-center">
+              <p className="text-sm font-semibold text-[var(--ink-strong)]">Cover Page</p>
+              <p className="text-xs text-[var(--ink-soft)] mt-1">Personalized explorer cover with destination artwork</p>
             </div>
           </div>
 
           {book.sectionImageUrls?.[0] ? (
-            <div className="rounded-xl border-2 border-gray-200 overflow-hidden bg-white shadow-sm">
+            <div className="rounded-[1.75rem] border border-white/80 overflow-hidden bg-white/88 shadow-[0_18px_45px_rgba(36,67,52,0.12)]">
               <img
                 src={book.sectionImageUrls[0]}
                 alt="Sample section preview"
                 className="w-full object-cover"
-                style={{ maxHeight: 220 }}
+                style={{ maxHeight: 320 }}
               />
-              <div className="p-3 text-center">
-                <p className="text-xs font-semibold text-gray-600">
+              <div className="p-4 text-center">
+                <p className="text-sm font-semibold text-[var(--ink-strong)]">
                   {book.content.sections[0]?.emoji} {book.content.sections[0]?.title}
                 </p>
+                <p className="text-xs text-[var(--ink-soft)] mt-1">Coloring page preview</p>
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border-2 border-gray-200 bg-green-50 flex flex-col items-center justify-center p-6 shadow-sm">
+            <div className="rounded-[1.75rem] border border-white/80 bg-[var(--brand-soft)] flex flex-col items-center justify-center p-6 shadow-[0_18px_45px_rgba(36,67,52,0.12)]">
               <span className="text-3xl mb-2">{book.content.sections[0]?.emoji ?? '🗺️'}</span>
-              <p className="text-xs font-semibold text-gray-600 text-center">
+              <p className="text-sm font-semibold text-[var(--ink-strong)] text-center">
                 {book.content.sections[0]?.title ?? 'Sample Section'}
               </p>
             </div>
@@ -179,8 +181,8 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
         </div>
 
         {/* Book summary */}
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-          <h2 className="font-bold text-gray-700 mb-3 text-sm">
+        <div className="bg-white/86 rounded-[1.75rem] border border-white/80 p-5 mb-6 shadow-[0_20px_50px_rgba(36,67,52,0.1)]">
+          <h2 className="font-bold text-[var(--ink-strong)] mb-3 text-sm uppercase tracking-[0.18em]">
             📋 {isIndividual ? `${book.childPersonalization[0]?.name}'s book:` : "What's inside:"}
           </h2>
           {isIndividual && (
@@ -197,7 +199,7 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
           )}
           <div className="space-y-1">
             {book.content.sections.map((s) => (
-              <div key={s.id} className="flex items-center gap-2 text-sm text-gray-600">
+              <div key={s.id} className="flex items-center gap-2 text-sm text-[var(--ink-soft)]">
                 <span>{s.emoji}</span>
                 <span>{s.title}</span>
               </div>
@@ -235,12 +237,12 @@ export default function PreviewScreen({ books }: PreviewScreenProps) {
             sessionStorage.removeItem('little-explorer-form')
             router.push('/')
           }}
-          className="w-full py-2.5 mt-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+          className="w-full py-2.5 mt-3 text-[var(--ink-soft)] hover:text-[var(--ink-strong)] text-sm font-medium transition-colors"
         >
           🔄 Make another book
         </button>
 
-        <p className="text-center text-xs text-gray-400 mt-8">
+        <p className="text-center text-xs text-[var(--ink-soft)]/70 mt-8">
           Little Explorer ·{' '}
           <a href="https://builtthisweekend.com" className="underline">
             builtthisweekend.com

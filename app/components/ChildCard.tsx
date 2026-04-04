@@ -11,26 +11,26 @@ interface ChildCardProps {
 }
 
 const cardColors = [
-  'bg-green-50 border-green-200',
-  'bg-blue-50 border-blue-200',
-  'bg-purple-50 border-purple-200',
-  'bg-amber-50 border-amber-200',
+  'bg-[linear-gradient(135deg,rgba(232,249,239,0.92),rgba(255,255,255,0.86))] border-[rgba(83,162,107,0.22)]',
+  'bg-[linear-gradient(135deg,rgba(236,244,255,0.92),rgba(255,255,255,0.86))] border-[rgba(93,145,206,0.22)]',
+  'bg-[linear-gradient(135deg,rgba(247,239,255,0.92),rgba(255,255,255,0.86))] border-[rgba(146,104,196,0.22)]',
+  'bg-[linear-gradient(135deg,rgba(255,247,222,0.92),rgba(255,255,255,0.86))] border-[rgba(243,182,85,0.28)]',
 ]
 
 export default function ChildCard({ child, index, onChange, onRemove, canRemove }: ChildCardProps) {
   const colorClass = cardColors[index % cardColors.length]
 
   return (
-    <div className={`rounded-xl border-2 p-4 ${colorClass} relative`}>
+    <div className={`rounded-[1.5rem] border p-4 ${colorClass} relative shadow-sm`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-gray-700 text-sm">
+        <h3 className="font-bold text-[var(--ink-strong)] text-sm uppercase tracking-[0.18em]">
           Explorer {index + 1}
         </h3>
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="text-gray-400 hover:text-red-400 text-sm transition-colors"
+            className="text-[var(--ink-soft)]/70 hover:text-red-500 text-sm transition-colors"
             aria-label="Remove child"
           >
             ✕ Remove
@@ -51,7 +51,7 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             placeholder="Explorer's name"
             maxLength={20}
             required
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+            className="w-full px-3 py-2 rounded-xl border border-white bg-white/90 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           />
           <p className="text-xs text-gray-400 mt-1">Used only to personalize the book</p>
         </div>
@@ -69,7 +69,7 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             min={2}
             max={12}
             required
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+            className="w-full px-3 py-2 rounded-xl border border-white bg-white/90 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           />
         </div>
 
@@ -89,8 +89,8 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
                 onClick={() => onChange({ ...child, gender: value as Child['gender'] })}
                 className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold border-2 transition-all ${
                   child.gender === value
-                    ? 'border-green-500 bg-green-100 text-green-800'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-green-300'
+                    ? 'border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-deep)]'
+                    : 'border-white bg-white/90 text-[var(--ink-soft)] hover:border-[rgba(83,162,107,0.3)]'
                 }`}
               >
                 {label}
@@ -111,7 +111,7 @@ export default function ChildCard({ child, index, onChange, onRemove, canRemove 
             onChange={(e) => onChange({ ...child, interests: e.target.value.slice(0, 100) })}
             placeholder="e.g. dinosaurs, Lego, animals, space, drawing"
             maxLength={100}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white"
+            className="w-full px-3 py-2 rounded-xl border border-white bg-white/90 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)]"
           />
         </div>
       </div>

@@ -46,6 +46,10 @@ export default function BookForm() {
   const [canonicalizing, setCanonicalize] = useState(false)
   const canonicalizeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [verification, setVerification] = useState<VerificationState | null>(null)
+  const sectionTitleClass = 'font-display text-2xl font-extrabold tracking-[-0.03em] text-[var(--ink-strong)]'
+  const labelClass = 'mb-1 block text-sm font-semibold text-[var(--ink-strong)]'
+  const inputClass = 'w-full rounded-2xl border border-white bg-white/92 px-4 py-3 text-base shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--brand)]'
+  const inputSmallClass = 'w-full rounded-2xl border border-white bg-white/92 px-3 py-2.5 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[var(--brand)]'
 
   const addChild = () => {
     if (children.length < 4) setChildren((prev) => [...prev, defaultChild()])
@@ -209,15 +213,15 @@ export default function BookForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* Section A: Destination */}
-      <section>
+      <section className="rounded-[1.75rem] border border-[rgba(53,88,67,0.1)] bg-[linear-gradient(135deg,rgba(232,249,239,0.82),rgba(255,255,255,0.74))] p-5">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-2xl">🗺️</span>
-          <h2 className="text-xl font-bold text-gray-800">Where are you going?</h2>
+          <h2 className={sectionTitleClass}>Where are you going?</h2>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
+            <label className={labelClass}>
               Destination *
             </label>
             <input
@@ -226,58 +230,58 @@ export default function BookForm() {
               onChange={(e) => handleDestinationChange(e.target.value)}
               placeholder="e.g. Yellowstone National Park, Grand Canyon, San Diego Zoo"
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-base transition-colors"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">
+            <label className={labelClass}>
               Specific places you&apos;ll visit{' '}
-              <span className="text-gray-400 font-normal">(optional but recommended)</span>
+              <span className="text-[var(--ink-soft)] font-normal">(optional but recommended)</span>
             </label>
             <textarea
               value={places}
               onChange={(e) => setPlaces(e.target.value)}
               placeholder="e.g. the aquarium, downtown, beach boardwalk, theme park"
               rows={2}
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-base transition-colors resize-none"
+              className={`${inputClass} resize-none`}
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--ink-soft)] mt-1">
               We&apos;ll build the book around your actual stops and add a map of your route.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Trip Start <span className="text-gray-400 font-normal">(optional)</span>
+              <label className={labelClass}>
+                Trip Start <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
               </label>
               <input
                 type="date"
                 value={tripStart}
                 onChange={(e) => setTripStart(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-sm transition-colors"
+                className={inputSmallClass}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Trip End <span className="text-gray-400 font-normal">(optional)</span>
+              <label className={labelClass}>
+                Trip End <span className="text-[var(--ink-soft)] font-normal">(optional)</span>
               </label>
               <input
                 type="date"
                 value={tripEnd}
                 onChange={(e) => setTripEnd(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-sm transition-colors"
+                className={inputSmallClass}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Language</label>
+            <label className={labelClass}>Language</label>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-sm bg-white transition-colors"
+              className={inputSmallClass}
             >
               {Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => (
                 <option key={code} value={code}>{name}</option>
@@ -288,10 +292,10 @@ export default function BookForm() {
       </section>
 
       {/* Section B: Children */}
-      <section>
+      <section className="rounded-[1.75rem] border border-[rgba(93,145,206,0.12)] bg-[linear-gradient(135deg,rgba(236,244,255,0.78),rgba(255,255,255,0.76))] p-5">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-2xl">🎒</span>
-          <h2 className="text-xl font-bold text-gray-800">Tell us about your explorers</h2>
+          <h2 className={sectionTitleClass}>Tell us about your explorers</h2>
         </div>
 
         <div className="space-y-3">
@@ -310,7 +314,7 @@ export default function BookForm() {
             <button
               type="button"
               onClick={addChild}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-green-300 text-green-600 font-semibold text-sm hover:bg-green-50 transition-colors"
+              className="w-full rounded-2xl border border-dashed border-[rgba(83,162,107,0.34)] bg-white/65 py-3 text-sm font-semibold text-[var(--brand-deep)] transition hover:bg-white"
             >
               + Add another explorer
             </button>
@@ -320,10 +324,10 @@ export default function BookForm() {
 
       {/* Section C: Book mode (only shown for 2+ children) */}
       {children.length >= 2 && (
-        <section>
+        <section className="rounded-[1.75rem] border border-[rgba(243,182,85,0.18)] bg-[linear-gradient(135deg,rgba(255,247,222,0.82),rgba(255,255,255,0.76))] p-5">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-2xl">📚</span>
-            <h2 className="text-xl font-bold text-gray-800">Book format</h2>
+            <h2 className={sectionTitleClass}>Book format</h2>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -332,15 +336,15 @@ export default function BookForm() {
               onClick={() => setBookMode('shared')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 bookMode === 'shared'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-[var(--brand)] bg-white shadow-md'
+                  : 'border-white bg-white/80 hover:border-[rgba(83,162,107,0.25)]'
               }`}
             >
               <div className="text-2xl mb-1">📚</div>
-              <div className={`font-bold text-sm mb-1 ${bookMode === 'shared' ? 'text-green-700' : 'text-gray-700'}`}>
+              <div className={`font-bold text-sm mb-1 ${bookMode === 'shared' ? 'text-[var(--brand-deep)]' : 'text-[var(--ink-strong)]'}`}>
                 One book for everyone
               </div>
-              <div className="text-xs text-gray-500 leading-snug">
+              <div className="text-xs text-[var(--ink-soft)] leading-snug">
                 All explorers share one book. Great for kids close in age.
               </div>
             </button>
@@ -350,22 +354,22 @@ export default function BookForm() {
               onClick={() => setBookMode('individual')}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 bookMode === 'individual'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
+                  ? 'border-[var(--brand)] bg-white shadow-md'
+                  : 'border-white bg-white/80 hover:border-[rgba(83,162,107,0.25)]'
               }`}
             >
               <div className="text-2xl mb-1">🎒</div>
-              <div className={`font-bold text-sm mb-1 ${bookMode === 'individual' ? 'text-green-700' : 'text-gray-700'}`}>
+              <div className={`font-bold text-sm mb-1 ${bookMode === 'individual' ? 'text-[var(--brand-deep)]' : 'text-[var(--ink-strong)]'}`}>
                 One book per explorer
               </div>
-              <div className="text-xs text-gray-500 leading-snug">
+              <div className="text-xs text-[var(--ink-soft)] leading-snug">
                 Each child gets their own book, age-matched puzzles and personalized just for them.
               </div>
             </button>
           </div>
 
           {bookMode === 'individual' && (
-            <p className="mt-2 text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">
+            <p className="mt-2 rounded-2xl bg-[var(--brand-soft)] px-3 py-2 text-xs text-[var(--brand-deep)]">
               ✨ Each book will have difficulty levels matched to that child&apos;s age and activities tailored to their interests.
             </p>
           )}
@@ -373,14 +377,14 @@ export default function BookForm() {
       )}
 
       {/* Section D: Email */}
-      <section>
+      <section className="rounded-[1.75rem] border border-[rgba(53,88,67,0.1)] bg-[linear-gradient(135deg,rgba(245,248,250,0.82),rgba(255,255,255,0.78))] p-5">
         <div className="flex items-center gap-2 mb-4">
           <span className="text-2xl">📬</span>
-          <h2 className="text-xl font-bold text-gray-800">How to get your book</h2>
+          <h2 className={sectionTitleClass}>How to get your book</h2>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
+          <label className={labelClass}>
             Your email address *
           </label>
           <input
@@ -389,15 +393,15 @@ export default function BookForm() {
             onChange={(e) => setParentEmail(e.target.value)}
             placeholder="parent@example.com"
             required
-            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-green-400 text-base transition-colors"
+            className={inputClass}
           />
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-[var(--ink-soft)] mt-2">
             We'll email you the PDF so you can print it anytime.
           </p>
         </div>
 
-        <div className="mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-          <p className="text-xs text-gray-500 leading-relaxed">
+        <div className="mt-4 rounded-2xl border border-white bg-white/75 p-4">
+          <p className="text-xs text-[var(--ink-soft)] leading-relaxed">
             🔒 <strong>Privacy:</strong> We only use your child's first name and age to personalize the book. We never store or share your child's information. Your email is used only to send your book.
           </p>
         </div>
@@ -405,22 +409,22 @@ export default function BookForm() {
 
       {/* Error */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           ⚠️ {error}
         </div>
       )}
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+      <div className="flex items-start gap-3 rounded-[1.5rem] border border-amber-200 bg-amber-50/90 p-4">
         <input
           type="checkbox"
           id="disclaimer"
           checked={disclaimerChecked}
           onChange={(e) => setDisclaimerChecked(e.target.checked)}
-          className="mt-1 w-4 h-4 rounded border-gray-300 text-green-600 flex-shrink-0 cursor-pointer"
+          className="mt-1 h-4 w-4 flex-shrink-0 cursor-pointer rounded border-gray-300 text-green-600"
           required
         />
-        <label htmlFor="disclaimer" className="text-sm text-amber-800 leading-relaxed cursor-pointer">
+        <label htmlFor="disclaimer" className="cursor-pointer text-sm leading-relaxed text-amber-800">
           I understand this book is AI-generated and may contain inaccuracies. I take full responsibility for reviewing the content before sharing with my children. By generating this book, I confirm I am using it at my own discretion. Little Explorer and its creators are not responsible for any actions taken based on this content. We do not store your child&apos;s personal information.
         </label>
       </div>
@@ -429,14 +433,14 @@ export default function BookForm() {
       <button
         type="submit"
         disabled={loading || !disclaimerChecked}
-        className="w-full py-4 px-8 rounded-2xl bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold text-lg transition-colors shadow-lg shadow-green-200"
+        className="w-full rounded-[1.75rem] bg-[linear-gradient(135deg,#53a26b,#3f8657)] px-8 py-4 text-lg font-bold text-white shadow-[0_18px_40px_rgba(83,162,107,0.26)] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-55"
       >
         {loading ? '🗺️ Getting started…' : '🌲 Create Our Book!'}
       </button>
 
       {verification && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl mt-4">
-          <h3 className="font-bold text-amber-800 mb-3">Verify your places</h3>
+        <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
+          <h3 className="mb-3 font-bold text-amber-800">Verify your places</h3>
           <p className="text-sm text-amber-700 mb-3">We looked up the places you entered. Please check these:</p>
           <div className="space-y-2 mb-4">
             {verification.results.map((r, i) => (
@@ -464,14 +468,14 @@ export default function BookForm() {
             <button
               type="button"
               onClick={() => setVerification(null)}
-              className="flex-1 py-2 px-4 rounded-xl border-2 border-gray-300 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              className="flex-1 rounded-2xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-[var(--ink-soft)] transition hover:bg-gray-50"
             >
               Edit Places
             </button>
             <button
               type="button"
               onClick={handleConfirmPlaces}
-              className="flex-1 py-2 px-4 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 transition-colors"
+              className="flex-1 rounded-2xl bg-[var(--brand)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
             >
               Use Suggestions &amp; Continue
             </button>

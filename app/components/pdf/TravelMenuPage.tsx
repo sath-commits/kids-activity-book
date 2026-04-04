@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface TravelMenuProps {
   menu: { category: string; items: { name: string; description: string; price: string }[] }[]
@@ -86,41 +86,36 @@ export default function TravelMenuPage({ menu, destinationDisplayName, pageNumbe
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.orange }]} />
-      <View style={{ position: 'absolute', top: 22, left: 28 }}>
-        <MascotWithBubble
-          message={"Welcome to the\nfunny food place!\nWhat looks\ntasty to you?"}
-          bubbleSide="right"
-          size={55}
-        />
-      </View>
+      <PageGuide
+        message={"Welcome to the funny food place. What looks tasty to you?"}
+        side="left"
+        accentColor={colors.orange}
+      />
+      <Text style={[styles.h1, { color: colors.orange }]}>{destinationDisplayName} Explorer's Menu</Text>
+      <Text style={s.subtitle}>Welcome to our imaginary restaurant! What would you order?</Text>
 
-      <View style={{ marginTop: 60 }}>
-        <Text style={[styles.h1, { color: colors.orange }]}>{destinationDisplayName} Explorer's Menu</Text>
-        <Text style={s.subtitle}>Welcome to our imaginary restaurant! What would you order?</Text>
-
-        {menu.map((section, si) => (
-          <View key={si}>
-            <View style={s.categoryHeader}>
-              <Text style={s.categoryTitle}>{section.category}</Text>
-            </View>
-            {section.items.map((item, ii) => (
-              <View key={ii} style={s.menuItem}>
-                <View style={s.itemDetails}>
-                  <View style={s.itemNameRow}>
-                    <Text style={s.itemName}>{item.name}</Text>
-                    <Text style={s.itemPrice}>{item.price}</Text>
-                  </View>
-                  <Text style={s.itemDescription}>{item.description}</Text>
-                </View>
-                <View style={s.checkboxArea}>
-                  <Text style={s.checkboxLabel}>Try it?</Text>
-                  <View style={s.checkbox} />
-                </View>
-              </View>
-            ))}
+      {menu.map((section, si) => (
+        <View key={si}>
+          <View style={s.categoryHeader}>
+            <Text style={s.categoryTitle}>{section.category}</Text>
           </View>
-        ))}
-      </View>
+          {section.items.map((item, ii) => (
+            <View key={ii} style={s.menuItem}>
+              <View style={s.itemDetails}>
+                <View style={s.itemNameRow}>
+                  <Text style={s.itemName}>{item.name}</Text>
+                  <Text style={s.itemPrice}>{item.price}</Text>
+                </View>
+                <Text style={s.itemDescription}>{item.description}</Text>
+              </View>
+              <View style={s.checkboxArea}>
+                <Text style={s.checkboxLabel}>Try it?</Text>
+                <View style={s.checkbox} />
+              </View>
+            </View>
+          ))}
+        </View>
+      ))}
 
       <View style={styles.footer}>
         <Text>Little Explorer · builtthisweekend.com</Text>

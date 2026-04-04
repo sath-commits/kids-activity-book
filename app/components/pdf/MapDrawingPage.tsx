@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet, Svg, Line, Polygon } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface MapDrawingPageProps {
   mapDrawingChallenge: {
@@ -122,52 +122,48 @@ function CompassRose() {
 }
 
 export default function MapDrawingPage({ mapDrawingChallenge, destinationDisplayName, pageNumber }: MapDrawingPageProps) {
-  const { instructions, landmarks } = mapDrawingChallenge
+  const instructions = mapDrawingChallenge.instructions.slice(0, 5)
+  const landmarks = mapDrawingChallenge.landmarks.slice(0, 6)
 
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.teal }]} />
-      <View style={{ position: 'absolute', top: 22, left: 28 }}>
-        <MascotWithBubble
-          message={"Make your map as\ndetailed as you\ncan! Add animals,\nroads, and more!"}
-          bubbleSide="right"
-          size={55}
-        />
+      <PageGuide
+        message={"Make your map as detailed as you can. Add animals, roads, and more."}
+        side="left"
+        accentColor={colors.teal}
+      />
+      <Text style={[styles.h1, { color: colors.teal }]}>Draw Your Map!</Text>
+      <Text style={s.subtitle}>Create your own map of {destinationDisplayName}!</Text>
+
+      <View style={s.infoRow}>
+        <View style={s.instructionsCol}>
+          <Text style={s.sectionTitle}>Instructions:</Text>
+          {instructions.map((step, i) => (
+            <View key={i} style={s.instructionItem}>
+              <Text style={s.stepNum}>{i + 1}.</Text>
+              <Text style={s.stepText}>{step}</Text>
+            </View>
+          ))}
+        </View>
+        <View style={s.landmarksCol}>
+          <Text style={s.sectionTitle}>Landmarks to include:</Text>
+          {landmarks.map((landmark, i) => (
+            <View key={i} style={s.landmarkItem}>
+              <View style={s.landmarkCheck} />
+              <Text style={s.landmarkText}>{landmark}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
-      <View style={{ marginTop: 60 }}>
-        <Text style={[styles.h1, { color: colors.teal }]}>Draw Your Map!</Text>
-        <Text style={s.subtitle}>Create your own map of {destinationDisplayName}!</Text>
-
-        <View style={s.infoRow}>
-          <View style={s.instructionsCol}>
-            <Text style={s.sectionTitle}>Instructions:</Text>
-            {instructions.map((step, i) => (
-              <View key={i} style={s.instructionItem}>
-                <Text style={s.stepNum}>{i + 1}.</Text>
-                <Text style={s.stepText}>{step}</Text>
-              </View>
-            ))}
-          </View>
-          <View style={s.landmarksCol}>
-            <Text style={s.sectionTitle}>Landmarks to include:</Text>
-            {landmarks.map((landmark, i) => (
-              <View key={i} style={s.landmarkItem}>
-                <View style={s.landmarkCheck} />
-                <Text style={s.landmarkText}>{landmark}</Text>
-              </View>
-            ))}
-          </View>
+      <View style={s.drawingBox}>
+        <View style={s.watermark}>
+          <Text style={s.watermarkText}>Draw here!</Text>
         </View>
-
-        <View style={s.drawingBox}>
-          <View style={s.watermark}>
-            <Text style={s.watermarkText}>Draw here!</Text>
-          </View>
-          <View style={s.compassContainer}>
-            <CompassRose />
-            <Text style={{ fontSize: 7, color: '#888', textAlign: 'center', marginTop: -4 }}>N↑</Text>
-          </View>
+        <View style={s.compassContainer}>
+          <CompassRose />
+          <Text style={{ fontSize: 7, color: '#888', textAlign: 'center', marginTop: -4 }}>N↑</Text>
         </View>
       </View>
 

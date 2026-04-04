@@ -1,6 +1,6 @@
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { colors, styles } from './pdfStyles'
-import MascotWithBubble from './MascotWithBubble'
+import PageGuide from './PageGuide'
 
 interface TopFivePageProps {
   topFiveLists: { title: string; items: string[] }[]
@@ -84,14 +84,11 @@ export default function TopFivePage({ topFiveLists, destinationDisplayName, page
   return (
     <Page size="A4" style={styles.page}>
       <View style={[styles.pageBand, { backgroundColor: colors.orange }]} />
-      <View style={{ position: 'absolute', top: 22, right: 28 }}>
-        <MascotWithBubble
-          message={"Which one is YOUR\nfavorite? Draw\nit in the box\nbelow each list!"}
-          bubbleSide="left"
-          size={55}
-        />
-      </View>
-
+      <PageGuide
+        message={"Which one is your favorite? Draw it in the box below each list."}
+        side="right"
+        accentColor={colors.orange}
+      />
       <Text style={[styles.h1, { color: colors.orange }]}>Top 5 Lists!</Text>
       <Text style={s.subtitle}>Amazing things about {destinationDisplayName}!</Text>
 

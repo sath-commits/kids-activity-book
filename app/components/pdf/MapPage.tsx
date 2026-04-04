@@ -12,8 +12,10 @@ interface MapPageProps {
 const s = StyleSheet.create({
   mapImage: {
     width: '100%',
+    height: 360,
     borderRadius: 8,
     marginBottom: 12,
+    objectFit: 'cover',
   },
   legend: {
     flexDirection: 'row',
@@ -58,7 +60,7 @@ export default function MapPage({ destinationDisplayName, places, mapImageB64, p
 
       {destinationIntro && (
         <Text style={{ fontSize: 10, color: colors.text, marginBottom: 10, lineHeight: 1.5, fontStyle: 'italic' }}>
-          {destinationIntro}
+          {destinationIntro.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ')}
         </Text>
       )}
 

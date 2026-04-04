@@ -147,14 +147,14 @@ export default function LoadingScreen() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white p-6">
-        <div className="max-w-md text-center">
+      <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(232,249,239,0.95),_rgba(255,250,238,0.94)_48%,_rgba(255,255,255,1)_100%)] p-6">
+        <div className="max-w-md rounded-[2rem] border border-white/70 bg-white/82 p-8 text-center shadow-[0_24px_70px_rgba(37,67,52,0.14)] backdrop-blur-xl">
           <p className="text-4xl mb-4">😕</p>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">Something went wrong</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <h2 className="font-display text-2xl font-bold text-[var(--ink-strong)] mb-2">Something went wrong</h2>
+          <p className="text-[var(--ink-soft)] mb-6">{error}</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition-colors"
+            className="px-6 py-3 rounded-2xl bg-[var(--brand)] text-white font-semibold shadow-lg shadow-[rgba(83,162,107,0.24)] transition hover:brightness-95"
           >
             Try Again
           </button>
@@ -164,29 +164,29 @@ export default function LoadingScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-green-50 to-white p-6">
-      <div className="max-w-lg w-full text-center">
+    <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(232,249,239,0.95),_rgba(255,250,238,0.94)_48%,_rgba(255,255,255,1)_100%)] p-6">
+      <div className="max-w-xl w-full rounded-[2.25rem] border border-white/70 bg-white/82 p-8 text-center shadow-[0_30px_90px_rgba(38,70,56,0.14)] backdrop-blur-xl">
         {/* Animated icon */}
-        <div className="text-6xl mb-6 animate-bounce">🌲</div>
+        <div className="mb-6 inline-flex h-24 w-24 items-center justify-center rounded-[2rem] bg-[linear-gradient(150deg,#eef8ef,#fff7de)] shadow-[0_20px_40px_rgba(53,88,67,0.12)] animate-bounce">🌲</div>
 
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+        <h1 className="font-display text-3xl font-bold text-[var(--ink-strong)] mb-2">
           Creating your adventure book!
         </h1>
 
         {childNames.length > 0 && (
-          <p className="text-green-700 font-semibold mb-1">
+          <p className="text-[var(--brand-deep)] font-semibold mb-1">
             Getting ready for {namesDisplay}'s big adventure!
           </p>
         )}
 
         {destinationName && (
-          <p className="text-gray-500 text-sm mb-8">📍 {destinationName}</p>
+          <p className="text-[var(--ink-soft)] text-sm mb-8">📍 {destinationName}</p>
         )}
 
         {/* Estimated time / individual progress */}
         {bookProgress ? (
           <div className="mb-6 space-y-1">
-            <div className="inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+            <div className="inline-block px-4 py-1.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)] text-sm font-medium">
               📖 Book {Math.min(bookProgress.done + 1, bookProgress.total)} of {bookProgress.total}…
             </div>
             <div className="flex justify-center gap-2 mt-2">
@@ -194,32 +194,32 @@ export default function LoadingScreen() {
                 <div
                   key={i}
                   className={`w-8 h-2 rounded-full transition-all duration-500 ${
-                    i < bookProgress.done ? 'bg-green-500' : 'bg-gray-200'
+                    i < bookProgress.done ? 'bg-[var(--brand)]' : 'bg-gray-200'
                   }`}
                 />
               ))}
             </div>
           </div>
         ) : (
-          <div className="mb-6 inline-block px-4 py-1.5 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+          <div className="mb-6 inline-block px-4 py-1.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand-deep)] text-sm font-medium">
             {cacheHit ? '⏳ Up to 30 seconds' : '⏳ Up to 2 minutes'}
           </div>
         )}
 
         {/* Progress bar */}
-        <div className="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+        <div className="w-full bg-[rgba(34,52,40,0.08)] rounded-full h-3 mb-4 overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-700"
+            className="h-full rounded-full bg-[linear-gradient(90deg,#53a26b,#5d91ce,#f3b655)] transition-all duration-700"
             style={{ width: `${progress}%` }}
           />
         </div>
 
         {/* Rotating message */}
-        <p className="text-gray-500 text-sm min-h-[1.5rem] transition-all duration-500">
+        <p className="text-[var(--ink-soft)] text-sm min-h-[1.5rem] transition-all duration-500">
           {MESSAGES[messageIdx]}
         </p>
 
-        <p className="text-xs text-gray-400 mt-8">
+        <p className="text-xs text-[var(--ink-soft)]/70 mt-8">
           Please keep this tab open while we create your book…
         </p>
       </div>

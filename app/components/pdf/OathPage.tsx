@@ -86,7 +86,7 @@ export default function OathPage({ pageNumber }: { pageNumber: number }) {
       <View style={[styles.pageBand, { backgroundColor: colors.accent }]} />
       {/* Mascot in top-right corner */}
       <View style={{ position: 'absolute', top: 22, right: 28 }}>
-        <MascotWithBubble message={"Hi! I'm Zuri!\nReady for your\nbig adventure?"} size={58} bubbleSide="left" />
+        <MascotWithBubble message={"Hi! I'm Moss!\nReady for your\nbig adventure?"} size={58} bubbleSide="left" />
       </View>
       <View style={s.content}>
         <Text style={[styles.h1, { textAlign: 'center' }]}>Junior Explorer Oath</Text>
