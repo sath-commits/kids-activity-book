@@ -11,6 +11,9 @@ interface VerifiedPlace {
   found: string | null
   notFound: boolean
   hasSuggestion: boolean
+  autoAccepted?: boolean
+  confidence?: 'high' | 'medium' | 'low'
+  reason?: string
   geocodeQuery: string | null
 }
 
@@ -115,15 +118,18 @@ export default function BookForm() {
           body: JSON.stringify({ places: parsedPlaces, destination: canonData.displayName }),
         })
         const verifyData = await verifyRes.json()
-        const parsedGeoQueries = (verifyData.results as VerifiedPlace[]).map(r => r.geocodeQuery ?? r.found ?? r.original)
-        const hasIssues = verifyData.results?.some((r: VerifiedPlace) => r.hasSuggestion || r.notFound)
+        const verificationResults = (verifyData.results as VerifiedPlace[])
+        const correctedPlaces = verificationResults.map((r) => r.found ?? r.original)
+        const parsedGeoQueries = verificationResults.map(r => r.geocodeQuery ?? r.found ?? r.original)
+        const reviewResults = verificationResults.filter((r) => r.notFound || (r.hasSuggestion && !r.autoAccepted))
+        const hasIssues = reviewResults.length > 0
         if (hasIssues) {
           setVerification({
-            results: verifyData.results,
+            results: reviewResults,
             displayName: canonData.displayName,
             slug: canonData.slug,
             cacheHit: canonData.cacheHit,
-            parsedPlaces,
+            parsedPlaces: correctedPlaces,
             parsedGeoQueries,
           })
           setLoading(false)
@@ -138,7 +144,7 @@ export default function BookForm() {
           language,
           parentEmail,
           bookMode,
-          places: parsedPlaces,
+          places: correctedPlaces,
           placeGeoQueries: parsedGeoQueries,
           destinationSlug: canonData.slug,
           displayName: canonData.displayName,
