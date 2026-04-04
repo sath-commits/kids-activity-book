@@ -6,6 +6,8 @@ import { normalizePlaces, generateMapImage } from '@/lib/mapbox'
 import { hashStr } from '@/lib/maze'
 
 export const maxDuration = 90
+const SECTION_IMAGE_VERSION = 'v2'
+const COVER_IMAGE_VERSION = 'v1'
 
 interface Child {
   name: string
@@ -382,10 +384,10 @@ async function uploadImagesToStorage(
   sectionsB64: (string | null)[]
 ): Promise<{ coverUrl: string | null; sectionUrls: (string | null)[] }> {
   const coverUpload = coverB64
-    ? uploadImageToStorage(coverB64, `destinations/${slug}/cover.png`)
+    ? uploadImageToStorage(coverB64, `destinations/${slug}/cover-${COVER_IMAGE_VERSION}.png`)
     : Promise.resolve(null)
   const sectionUploads = sectionsB64.map((b64, i) =>
-    b64 ? uploadImageToStorage(b64, `destinations/${slug}/section-${i}.png`) : Promise.resolve(null)
+    b64 ? uploadImageToStorage(b64, `destinations/${slug}/section-${SECTION_IMAGE_VERSION}-${i}.png`) : Promise.resolve(null)
   )
   const [coverUrl, ...sectionUrls] = await Promise.all([coverUpload, ...sectionUploads])
   return { coverUrl, sectionUrls }
@@ -418,7 +420,7 @@ function ageDescriptor(age: number): string {
 
 function coverVariantKey(child: Child): string {
   const ageBucket = child.age <= 4 ? '2-4' : child.age <= 7 ? '5-7' : child.age <= 10 ? '8-10' : '11-12'
-  return `watercolor-v1-${child.gender}-${ageBucket}`
+  return `watercolor-${COVER_IMAGE_VERSION}-${child.gender}-${ageBucket}`
 }
 
 async function storageObjectExists(path: string): Promise<boolean> {
@@ -470,7 +472,7 @@ async function ensurePersonalizedCoverUrl(
 async function generateSectionImages(displayName: string, content: BookContent): Promise<(string | null)[]> {
   const sectionPrompts = content.sections.map(
     (s) =>
-      `Children's coloring book page for ages 4-10. STYLE: simple flat cartoon line art, bold black outlines only, pure white background, absolutely zero gray shading, zero crosshatching, zero fills, zero gradients, zero dark areas. Every region must be left as empty white space ready to be colored in by a child. Think very simple thick-outlined cartoon, NOT a realistic illustration. SUBJECT: This page is specifically about "${s.title}" located at ${displayName}. Draw ONLY what is authentically found at this exact place — the architecture, landscape, or wildlife must be accurate to "${s.title}". For example, a Hindu temple must show gopuram towers and carved stonework, NOT a mosque or church; a cave must show cave interiors, NOT an exterior building. SCENE: ${s.imagePrompt}`
+      `Children's coloring book page for ages 4-10. STYLE: simple flat cartoon line art, bold black outlines only, pure white background, absolutely zero gray shading, zero crosshatching, zero fills, zero gradients, zero dark areas. Every region must be left as empty white space ready to be colored in by a child. Think very simple thick-outlined cartoon, NOT a realistic illustration. IMPORTANT COMPOSITION RULES: this must be a SINGLE PAGE illustration only. Do NOT draw a book spread, double-page layout, center seam, center fold, gutter shadow, crease, split composition, panel divider, frame border, or any vertical line down the middle. Do NOT make it look like an open book. The drawing should read as one continuous scene on one page. SUBJECT: This page is specifically about "${s.title}" located at ${displayName}. Draw ONLY what is authentically found at this exact place — the architecture, landscape, or wildlife must be accurate to "${s.title}". For example, a Hindu temple must show gopuram towers and carved stonework, NOT a mosque or church; a cave must show cave interiors, NOT an exterior building. SCENE: ${s.imagePrompt}`
   )
 
   const results = await Promise.allSettled(
@@ -677,14 +679,14 @@ export async function POST(req: NextRequest) {
   const personalizationPromise = personalizeChildren(children, destinationDisplayName)
 
   if (hasItinerary) {
+    const displayPlaces = places!.map((place) => place.trim())
     const geo = await normalizePlaces(places!, destinationDisplayName, placeGeoQueries)
     placeCoords = geo.coords
-    const normalizedPlaces = geo.canonicalNames
     const itineraryHash = hashStr([
       destinationSlug,
       language,
       audience.cacheKey,
-      ...normalizedPlaces.map((place) => place.trim().toLowerCase()),
+      ...displayPlaces.map((place) => place.toLowerCase()),
     ].join('|')).toString(16)
     const itineraryCacheSlug = `${destinationSlug}_itinerary_${itineraryHash}`
 
@@ -702,14 +704,19 @@ export async function POST(req: NextRequest) {
       coverImageUrl = cached.cover_image_url ?? null
       sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
 
-      const needsImages = !coverImageUrl || sectionImageUrls.length === 0
+      const hasCurrentCover = typeof coverImageUrl === 'string' && coverImageUrl.includes(`cover-${COVER_IMAGE_VERSION}.png`)
+      const hasCurrentSections = sectionImageUrls.length > 0 && sectionImageUrls.every((url, i) => {
+        if (!url) return false
+        return url.includes(`section-${SECTION_IMAGE_VERSION}-${i}.png`)
+      })
+      const needsImages = !hasCurrentCover || !hasCurrentSections
       const needsBonus = !cached.bonus_content_json
 
       const [imagesResult, bonusResult, logicGridResult] = await Promise.all([
         needsImages
           ? Promise.all([
-              sectionImageUrls.length === 0 ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
-              !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
+              !hasCurrentSections ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
+              !hasCurrentCover ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
             ])
           : Promise.resolve(null),
         needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),
@@ -736,7 +743,7 @@ export async function POST(req: NextRequest) {
 
       await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', itineraryCacheSlug)
     } else {
-      content = await generateDestinationContent(destinationDisplayName, audience, normalizedPlaces)
+      content = await generateDestinationContent(destinationDisplayName, audience, displayPlaces)
       const [imagesResult, bonus, logicGrid] = await Promise.all([
         Promise.all([
           generateSectionImages(destinationDisplayName, content),
@@ -775,7 +782,7 @@ export async function POST(req: NextRequest) {
       if (upsertError) console.error('Itinerary cache upsert error:', upsertError.message)
     }
 
-    const mapImageB64Result = await generateMapImage(normalizedPlaces, placeCoords!)
+    const mapImageB64Result = await generateMapImage(displayPlaces, placeCoords!)
     const personalizedCoverUrl = coverChild
       ? await ensurePersonalizedCoverUrl(destinationSlug, destinationDisplayName, coverChild)
       : null
@@ -784,7 +791,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       destinationDisplayName, destinationSlug, tripDates, cacheHit,
       content, coverImageUrl: personalizedCoverUrl ?? coverImageUrl, sectionImageUrls, childPersonalization,
-      language, parentEmail, places: normalizedPlaces, mapImageB64: mapImageB64Result ?? null,
+      language, parentEmail, places: displayPlaces, mapImageB64: mapImageB64Result ?? null,
     })
   }
 
@@ -810,14 +817,19 @@ export async function POST(req: NextRequest) {
     sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
 
     // If missing images or bonus content, fill the gaps — personalization is already running in parallel
-    const needsImages = !coverImageUrl || sectionImageUrls.length === 0
+    const hasCurrentCover = typeof coverImageUrl === 'string' && coverImageUrl.includes(`cover-${COVER_IMAGE_VERSION}.png`)
+    const hasCurrentSections = sectionImageUrls.length > 0 && sectionImageUrls.every((url, i) => {
+      if (!url) return false
+      return url.includes(`section-${SECTION_IMAGE_VERSION}-${i}.png`)
+    })
+    const needsImages = !hasCurrentCover || !hasCurrentSections
     const needsBonus = !cached.bonus_content_json
 
     const [imagesResult, bonusResult, logicGridResult] = await Promise.all([
       needsImages
         ? Promise.all([
-            sectionImageUrls.length === 0 ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
-            !coverImageUrl ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
+            !hasCurrentSections ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
+            !hasCurrentCover ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
           ])
         : Promise.resolve(null),
       needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),

@@ -1,7 +1,7 @@
 'use client'
 
 // All @react-pdf/renderer usage lives here so it loads as a single dynamic chunk.
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { PDFDownloadLink } from '@react-pdf/renderer'
 import { GeneratedBook } from '@/lib/types'
 import BookPDF from './pdf/BookPDF'
@@ -27,11 +27,59 @@ export default function PDFActions({
   emailError,
   pdfBlob,
 }: PDFActionsProps) {
+  const [preparedCoverUrl, setPreparedCoverUrl] = useState<string | null>(null)
+  const [preparedSectionUrls, setPreparedSectionUrls] = useState<(string | null)[] | null>(null)
+  const [assetsLoading, setAssetsLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function preparePdfAssets() {
+      setAssetsLoading(true)
+      setPreparedCoverUrl(null)
+      setPreparedSectionUrls(null)
+
+      try {
+        const res = await fetch('/api/pdf-assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            coverImageUrl: book.coverImageUrl,
+            sectionImageUrls: book.sectionImageUrls,
+          }),
+        })
+        const data = await res.json()
+        if (cancelled) return
+        setPreparedCoverUrl(data.coverImageDataUrl ?? book.coverImageUrl ?? null)
+        setPreparedSectionUrls(
+          Array.isArray(data.sectionImageDataUrls) ? data.sectionImageDataUrls : book.sectionImageUrls
+        )
+      } catch {
+        if (cancelled) return
+        setPreparedCoverUrl(book.coverImageUrl ?? null)
+        setPreparedSectionUrls(book.sectionImageUrls)
+      } finally {
+        if (!cancelled) setAssetsLoading(false)
+      }
+    }
+
+    preparePdfAssets()
+    return () => {
+      cancelled = true
+    }
+  }, [book])
+
+  const pdfBook = useMemo<GeneratedBook>(() => ({
+    ...book,
+    coverImageUrl: preparedCoverUrl ?? book.coverImageUrl,
+    sectionImageUrls: preparedSectionUrls ?? book.sectionImageUrls,
+  }), [book, preparedCoverUrl, preparedSectionUrls])
+
   return (
     <div className="space-y-3">
       {/* Download */}
       <PDFDownloadLink
-        document={<BookPDF book={book} />}
+        document={<BookPDF book={pdfBook} />}
         fileName={fileName}
         className="block w-full"
       >
@@ -40,10 +88,10 @@ export default function PDFActions({
           if (pdfError) console.error('PDF render error:', pdfError)
           return (
             <button
-              disabled={loading || !!pdfError}
+              disabled={assetsLoading || loading || !!pdfError}
               className="w-full py-4 px-8 rounded-2xl bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold text-lg transition-colors shadow-lg shadow-green-200"
             >
-              {loading ? '⏳ Building PDF…' : pdfError ? `❌ PDF Error: ${pdfError.message}` : '⬇️ Download PDF'}
+              {assetsLoading ? '🖼️ Preparing artwork…' : loading ? '⏳ Building PDF…' : pdfError ? `❌ PDF Error: ${pdfError.message}` : '⬇️ Download PDF'}
             </button>
           )
         }}
@@ -66,7 +114,7 @@ export default function PDFActions({
 
       {!pdfBlob && (
         <p className="text-xs text-gray-400 text-center">
-          The email button will activate once the PDF has finished loading above.
+          The email button will activate once the PDF artwork and document have finished loading.
         </p>
       )}
     </div>

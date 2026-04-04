@@ -21,6 +21,59 @@ interface MapboxFeature {
   center?: [number, number]
   text?: string
   place_name?: string
+  place_type?: string[]
+}
+
+function normalizeLabel(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ')
+}
+
+function containsRoadSuffix(value: string): boolean {
+  return /\b(road|rd|drive|dr|street|st|avenue|ave|highway|hwy|lane|ln)\b/i.test(value)
+}
+
+function placeKeywordBonus(query: string, featureName: string): number {
+  const keywords = ['beach', 'lake', 'ridge', 'forest', 'bay', 'cape', 'falls', 'mount', 'mountain', 'trail']
+  const q = normalizeLabel(query)
+  const f = normalizeLabel(featureName)
+  return keywords.reduce((score, keyword) => {
+    const queryHas = q.includes(keyword)
+    const featureHas = f.includes(keyword)
+    if (queryHas && featureHas) return score + 14
+    if (queryHas && !featureHas) return score - 18
+    return score
+  }, 0)
+}
+
+function scoreFeature(feature: MapboxFeature, query: string, destination: string, proximity?: [number, number]): number {
+  const text = feature.text ?? ''
+  const placeName = feature.place_name ?? ''
+  const normalizedQuery = normalizeLabel(query.split(',')[0] ?? query)
+  const normalizedText = normalizeLabel(text)
+  const normalizedPlaceName = normalizeLabel(placeName)
+  let score = 0
+
+  if (normalizedText === normalizedQuery) score += 120
+  else if (normalizedText.includes(normalizedQuery) || normalizedQuery.includes(normalizedText)) score += 60
+
+  if (normalizedPlaceName.includes(normalizeLabel(destination))) score += 30
+
+  score += placeKeywordBonus(query, `${text} ${placeName}`)
+
+  if (!containsRoadSuffix(query) && containsRoadSuffix(text)) score -= 120
+  if (!containsRoadSuffix(query) && containsRoadSuffix(placeName)) score -= 60
+
+  const placeTypes = feature.place_type ?? []
+  if (placeTypes.includes('address')) score -= 100
+  if (placeTypes.includes('street')) score -= 90
+  if (placeTypes.includes('postcode')) score -= 80
+
+  if (proximity && feature.center) {
+    const distanceKm = haversineKm(proximity[0], proximity[1], feature.center[0], feature.center[1])
+    score -= Math.min(distanceKm, 250) * 0.2
+  }
+
+  return score
 }
 
 async function geocodeDestination(destination: string): Promise<[number, number] | null> {
@@ -64,21 +117,17 @@ async function geocodePlace(query: string, destination: string, proximity?: [num
     const res = await fetch(url)
     const data = await res.json()
     const features: MapboxFeature[] = Array.isArray(data.features) ? data.features : []
-    const feature = proximity
-      ? features
-          .map((item: MapboxFeature) => {
-            const coords = item.center
-            if (!coords) return null
-            return {
-              item,
-              distanceKm: haversineKm(proximity[0], proximity[1], coords[0], coords[1]),
-            }
-          })
-          .filter((item): item is { item: MapboxFeature & { center: [number, number] }; distanceKm: number } => {
-            return item !== null && item.distanceKm <= MAX_DESTINATION_DISTANCE_KM
-          })
-          .sort((a: { distanceKm: number }, b: { distanceKm: number }) => a.distanceKm - b.distanceKm)[0]?.item
-      : features[0]
+    const feature = features
+      .filter((item): item is MapboxFeature & { center: [number, number] } => Array.isArray(item.center))
+      .filter((item) => {
+        if (!proximity) return true
+        return haversineKm(proximity[0], proximity[1], item.center[0], item.center[1]) <= MAX_DESTINATION_DISTANCE_KM
+      })
+      .map((item) => ({
+        item,
+        score: scoreFeature(item, query, destination, proximity),
+      }))
+      .sort((a, b) => b.score - a.score)[0]?.item
 
     if (feature) {
       const coords = feature.center as [number, number]
@@ -110,7 +159,8 @@ export async function normalizePlaces(places: string[], destination: string, geo
   const queries = places.map((p, i) => geocodeQueries?.[i] ?? `${p}, ${destination}`)
   const results = await Promise.all(queries.map((q) => geocodePlace(q, destination, destCoords ?? undefined)))
   return {
-    canonicalNames: results.map((r, i) => r?.canonical ?? places[i]),
+    // Preserve the verified place labels from the parent flow; geocoders often return roads/regions.
+    canonicalNames: places,
     coords: results.map((r) => r?.coords ?? null),
   }
 }

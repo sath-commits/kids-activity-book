@@ -1,14 +1,52 @@
 import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer'
 import { SectionContent } from '@/lib/types'
+import { colors, styles } from './pdfStyles'
 
 const s = StyleSheet.create({
-  pageNum: {
-    position: 'absolute',
-    bottom: 10,
-    right: 14,
-    fontSize: 7,
-    color: 'rgba(255,255,255,0.7)',
-    fontFamily: 'Nunito',
+  intro: {
+    fontSize: 10,
+    color: colors.muted,
+    marginBottom: 10,
+    lineHeight: 1.4,
+  },
+  artFrame: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: '#d9d9d9',
+    borderRadius: 16,
+    padding: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  artImage: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+  },
+  fallback: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  fallbackTitle: {
+    fontFamily: 'Nunito-Bold',
+    fontSize: 22,
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  fallbackBody: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 1.5,
   },
 })
 
@@ -20,17 +58,25 @@ interface SectionColoringPageProps {
 
 export default function SectionColoringPage({ section, imageUrl, pageNumber }: SectionColoringPageProps) {
   return (
-    <Page size="A4" style={{ backgroundColor: '#fff', padding: 0 }}>
-      {/* Fallback always visible — covered by the image if it loads successfully */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, margin: 30, borderWidth: 2, borderColor: '#ccc', borderRadius: 8, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontFamily: 'Nunito-Bold', fontSize: 18, color: '#2d6a4f', textAlign: 'center', marginBottom: 8 }}>{section.title}</Text>
-        <Text style={{ fontSize: 12, color: '#666', textAlign: 'center' }}>Color this page!</Text>
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.h1}>{section.title}</Text>
+      <Text style={s.intro}>Color this scene from {section.title}. Add your own crayons, pencils, or markers!</Text>
+
+      <View style={s.artFrame}>
+        {imageUrl ? (
+          <Image src={imageUrl} style={s.artImage} />
+        ) : (
+          <View style={s.fallback}>
+            <Text style={s.fallbackTitle}>{section.title}</Text>
+            <Text style={s.fallbackBody}>Color this page! If the artwork is missing, this space is still yours to draw in.</Text>
+          </View>
+        )}
       </View>
-      {/* Image sits on top — if it fails to load, fallback above remains visible */}
-      {imageUrl && (
-        <Image src={imageUrl} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      )}
-      <Text style={s.pageNum}>Page {pageNumber}</Text>
+
+      <View style={styles.footer}>
+        <Text>Little Explorer · builtthisweekend.com</Text>
+        <Text>Page {pageNumber}</Text>
+      </View>
     </Page>
   )
 }

@@ -262,7 +262,7 @@ export default function BookPDF({ book }: BookPDFProps) {
             pageNumber={sp.journal}
           />,
           ...slotKeys.map(key => renderBonusPage(key)),
-        ]
+        ].filter(Boolean)
       })}
 
       {/* ── Back matter ── */}

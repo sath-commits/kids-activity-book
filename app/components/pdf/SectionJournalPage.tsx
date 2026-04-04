@@ -8,15 +8,53 @@ interface SectionJournalPageProps {
 }
 
 const s = StyleSheet.create({
-  drawingBox: {
-    borderWidth: 1.5,
-    borderColor: colors.border,
+  pageBand: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 10,
+    backgroundColor: '#f3b655',
+  },
+  subtitle: {
+    fontSize: 10.5,
+    color: colors.muted,
+    lineHeight: 1.5,
+    marginBottom: 12,
+  },
+  promptRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  promptCard: {
+    flex: 1,
     borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+  },
+  promptLabel: {
+    fontSize: 9,
+    fontFamily: 'Nunito-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  promptValue: {
+    fontSize: 10,
+    lineHeight: 1.4,
+    color: colors.text,
+  },
+  drawingBox: {
+    borderWidth: 2,
+    borderColor: '#d7d4cc',
+    borderRadius: 16,
     borderStyle: 'dashed',
     marginBottom: 16,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 10,
+    paddingTop: 14,
+    backgroundColor: '#fffdf8',
   },
   drawingPrompt: {
     fontSize: 11,
@@ -27,7 +65,7 @@ const s = StyleSheet.create({
     flex: 1,
   },
   writingPrompt: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: 'Nunito-Bold',
     color: colors.primary,
     marginBottom: 12,
@@ -41,7 +79,33 @@ const s = StyleSheet.create({
   line: {
     borderBottomWidth: 1,
     borderBottomColor: '#d1d5db',
-    marginBottom: 18,
+    marginBottom: 16,
+  },
+  memoryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  memoryBox: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    padding: 8,
+  },
+  memoryLabel: {
+    fontSize: 8.5,
+    fontFamily: 'Nunito-Bold',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  memoryLine: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#d7d4cc',
+    marginBottom: 8,
   },
 })
 
@@ -70,7 +134,20 @@ export default function SectionJournalPage({ sectionTitle, childAge, pageNumber 
 
   return (
     <Page size="A4" style={styles.page}>
+      <View style={s.pageBand} />
       <Text style={[styles.h2, { marginBottom: 16 }]}>{sectionTitle} — My Journal</Text>
+      <Text style={s.subtitle}>Pause for a moment, remember what stood out, and make this page your own.</Text>
+
+      <View style={s.promptRow}>
+        <View style={[s.promptCard, { backgroundColor: '#fff7ed', borderColor: '#f3b655' }]}>
+          <Text style={[s.promptLabel, { color: '#a66318' }]}>Best Memory</Text>
+          <Text style={s.promptValue}>What was the coolest thing you saw at {sectionTitle}?</Text>
+        </View>
+        <View style={[s.promptCard, { backgroundColor: '#eef6ff', borderColor: '#9cc4f4' }]}>
+          <Text style={[s.promptLabel, { color: '#2b6cb0' }]}>Explorer Tip</Text>
+          <Text style={s.promptValue}>Use this page for sketches, small facts, sounds, and anything you want to remember.</Text>
+        </View>
+      </View>
 
       {/* Drawing box */}
       <View style={[s.drawingBox, { height: drawingHeight }]}>
@@ -84,6 +161,23 @@ export default function SectionJournalPage({ sectionTitle, childAge, pageNumber 
         {writingSubPrompt && (
           <Text style={s.writingSubPrompt}>{writingSubPrompt}</Text>
         )}
+        <View style={s.memoryRow}>
+          <View style={[s.memoryBox, { borderColor: '#f0c66a', backgroundColor: '#fffaf0' }]}>
+            <Text style={[s.memoryLabel, { color: '#a66318' }]}>I Spotted</Text>
+            <View style={s.memoryLine} />
+            <View style={s.memoryLine} />
+          </View>
+          <View style={[s.memoryBox, { borderColor: '#9cc4f4', backgroundColor: '#f6fbff' }]}>
+            <Text style={[s.memoryLabel, { color: '#2b6cb0' }]}>I Heard / Felt</Text>
+            <View style={s.memoryLine} />
+            <View style={s.memoryLine} />
+          </View>
+          <View style={[s.memoryBox, { borderColor: '#bfa8f5', backgroundColor: '#faf7ff' }]}>
+            <Text style={[s.memoryLabel, { color: '#7c3aed' }]}>I Want to Remember</Text>
+            <View style={s.memoryLine} />
+            <View style={s.memoryLine} />
+          </View>
+        </View>
         {Array.from({ length: lineCount }).map((_, i) => (
           <View key={i} style={s.line} />
         ))}
