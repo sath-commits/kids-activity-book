@@ -64,6 +64,28 @@ interface AudienceProfile {
   ageCeiling: number
 }
 
+function tryParseJson<T>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return null
+  }
+}
+
+function tryExtractAndParseJsonObject<T>(raw: string): T | null {
+  return tryParseJson<T>(raw) ?? (() => {
+    const match = raw.match(/\{[\s\S]*\}/)
+    return match ? tryParseJson<T>(match[0]) : null
+  })()
+}
+
+function tryExtractAndParseJsonArray<T>(raw: string): T | null {
+  return tryParseJson<T>(raw) ?? (() => {
+    const match = raw.match(/\[[\s\S]*\]/)
+    return match ? tryParseJson<T>(match[0]) : null
+  })()
+}
+
 function normalizeInterestWords(children: Child[]): string[] {
   const seen = new Set<string>()
   const words: string[] = []
@@ -224,11 +246,7 @@ Rules:
     })
 
     const raw = completion.choices[0].message.content?.trim() ?? ''
-    try {
-      return JSON.parse(raw) as BonusContent
-    } catch {
-      return {}
-    }
+    return tryExtractAndParseJsonObject<BonusContent>(raw) ?? {}
   } catch (e) {
     console.error('Bonus content generation failed:', e)
     return {}
@@ -277,7 +295,7 @@ Rules:
     })
 
     const raw = completion.choices[0].message.content?.trim() ?? ''
-    return JSON.parse(raw) as BookContent['logicGrid']
+    return tryExtractAndParseJsonObject<BookContent['logicGrid']>(raw) ?? undefined
   } catch (e) {
     console.error('Logic grid generation failed:', e)
     return undefined
@@ -350,14 +368,9 @@ Additional personalization rules:
   })
 
   const raw = completion.choices[0].message.content?.trim() ?? ''
-  try {
-    return JSON.parse(raw) as BookContent
-  } catch {
-    // Try to extract JSON from the response
-    const jsonMatch = raw.match(/\{[\s\S]*\}/)
-    if (jsonMatch) return JSON.parse(jsonMatch[0]) as BookContent
-    throw new Error('Failed to parse GPT content response')
-  }
+  const parsed = tryExtractAndParseJsonObject<BookContent>(raw)
+  if (parsed) return parsed
+  throw new Error('Failed to parse GPT content response')
 }
 
 async function uploadImageToStorage(b64: string, path: string): Promise<string | null> {
@@ -545,22 +558,14 @@ Return a JSON array (one object per child, in the same order):
   })
 
   const raw = completion.choices[0].message.content?.trim() ?? ''
-  try {
-    const parsed = JSON.parse(raw) as {
-      name: string
-      keywords: string[]
-      personalizedChallengeNote: string
-      personalizedDrawingPrompt: string
-    }[]
-    return children.map((child, i) => ({
-      name: child.name,
-      age: child.age,
-      gender: child.gender,
-      keywords: parsed[i]?.keywords ?? [],
-      personalizedChallengeNote: parsed[i]?.personalizedChallengeNote ?? '',
-      personalizedDrawingPrompt: parsed[i]?.personalizedDrawingPrompt ?? `Draw something amazing you saw at ${destination}!`,
-    }))
-  } catch {
+  const parsed = tryExtractAndParseJsonArray<{
+    name: string
+    keywords: string[]
+    personalizedChallengeNote: string
+    personalizedDrawingPrompt: string
+  }[]>(raw)
+
+  if (!parsed) {
     return children.map((c) => ({
       name: c.name,
       age: c.age,
@@ -570,6 +575,15 @@ Return a JSON array (one object per child, in the same order):
       personalizedDrawingPrompt: `Draw something amazing you saw at ${destination}!`,
     }))
   }
+
+  return children.map((child, i) => ({
+    name: child.name,
+    age: child.age,
+    gender: child.gender,
+    keywords: parsed[i]?.keywords ?? [],
+    personalizedChallengeNote: parsed[i]?.personalizedChallengeNote ?? '',
+    personalizedDrawingPrompt: parsed[i]?.personalizedDrawingPrompt ?? `Draw something amazing you saw at ${destination}!`,
+  }))
 }
 
 async function translateContent(content: BookContent, language: string, languageName: string): Promise<BookContent> {
@@ -590,11 +604,7 @@ async function translateContent(content: BookContent, language: string, language
   })
 
   const raw = completion.choices[0].message.content?.trim() ?? ''
-  try {
-    return JSON.parse(raw) as BookContent
-  } catch {
-    return content // fallback to English
-  }
+  return tryExtractAndParseJsonObject<BookContent>(raw) ?? content
 }
 
 function contentFromCacheRow(cached: DestinationCache & { destination_intro?: string | null }): BookContent {
@@ -640,67 +650,200 @@ function bonusToCache(content: BookContent) {
   }
 }
 
+function cacheWritePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...payload,
+    // Backward compatibility for older Supabase schemas that still require these columns.
+    cover_image_b64: '',
+    section_images_b64: [],
+  }
+}
+
+function userSafeErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : ''
+  if (!message) return 'Failed to generate the book. Please try again.'
+  if (message.includes('The string did not match the expected pattern')) {
+    return 'A generated image or cached asset had an invalid URL pattern. Please try again.'
+  }
+  if (message.includes('Failed to parse GPT content response') || message.includes('JSON')) {
+    return 'The AI returned malformed structured content. Please try again.'
+  }
+  return message
+}
+
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
-  const { allowed } = checkRateLimit(ip)
-  if (!allowed) {
-    return NextResponse.json({ error: 'Rate limit exceeded. Max 10 books per hour per IP.' }, { status: 429 })
-  }
-
-  let body: GenerateBookRequest
   try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const { allowed } = checkRateLimit(ip)
+    if (!allowed) {
+      return NextResponse.json({ error: 'Rate limit exceeded. Max 10 books per hour per IP.' }, { status: 429 })
+    }
 
-  const validationError = validateInput(body)
-  if (validationError) {
-    return NextResponse.json({ error: validationError }, { status: 400 })
-  }
+    let body: GenerateBookRequest
+    try {
+      body = await req.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+    }
 
-  const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail, places, placeGeoQueries } = body
-  const hasItinerary = Array.isArray(places) && places.length > 0
-  const coverChild = children.length === 1 ? children[0] : null
-  const audience = buildAudienceProfile(children)
+    const validationError = validateInput(body)
+    if (validationError) {
+      return NextResponse.json({ error: validationError }, { status: 400 })
+    }
 
-  const languageNames: Record<string, string> = {
-    es: 'Spanish', fr: 'French', zh: 'Chinese (Simplified)', pt: 'Portuguese',
-  }
+    const { destinationSlug, destinationDisplayName, tripDates, children, language, parentEmail, places, placeGeoQueries } = body
+    const hasItinerary = Array.isArray(places) && places.length > 0
+    const coverChild = children.length === 1 ? children[0] : null
+    const audience = buildAudienceProfile(children)
 
-  let content: BookContent
-  let sectionImageUrls: (string | null)[]
-  let coverImageUrl: string | null = null
-  let cacheHit = false
-  let placeCoords: ([number, number] | null)[] | undefined
+    const languageNames: Record<string, string> = {
+      es: 'Spanish', fr: 'French', zh: 'Chinese (Simplified)', pt: 'Portuguese',
+    }
 
-  // Start personalization immediately — it only needs children + destination name,
-  // not the generated content, so it runs in parallel with everything else.
-  const personalizationPromise = personalizeChildren(children, destinationDisplayName)
+    let content: BookContent
+    let sectionImageUrls: (string | null)[]
+    let coverImageUrl: string | null = null
+    let cacheHit = false
+    let placeCoords: ([number, number] | null)[] | undefined
 
-  if (hasItinerary) {
-    const displayPlaces = places!.map((place) => place.trim())
-    const geo = await normalizePlaces(places!, destinationDisplayName, placeGeoQueries)
-    placeCoords = geo.coords
-    const itineraryHash = hashStr([
-      destinationSlug,
-      language,
-      audience.cacheKey,
-      ...displayPlaces.map((place) => place.toLowerCase()),
-    ].join('|')).toString(16)
-    const itineraryCacheSlug = `${destinationSlug}_itinerary_${itineraryHash}`
+    // Start personalization immediately — it only needs children + destination name,
+    // not the generated content, so it runs in parallel with everything else.
+    const personalizationPromise = personalizeChildren(children, destinationDisplayName)
+
+    if (hasItinerary) {
+      const displayPlaces = places!.map((place) => place.trim())
+      const geo = await normalizePlaces(places!, destinationDisplayName, placeGeoQueries)
+      placeCoords = geo.coords
+      const itineraryHash = hashStr([
+        destinationSlug,
+        language,
+        audience.cacheKey,
+        ...displayPlaces.map((place) => place.toLowerCase()),
+      ].join('|')).toString(16)
+      const itineraryCacheSlug = `${destinationSlug}_itinerary_${itineraryHash}`
+
+      const { data: cached, error: cacheReadError } = await getSupabase()
+        .from('destination_cache')
+        .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,bonus_content_json,hit_count')
+        .eq('destination_slug', itineraryCacheSlug)
+        .maybeSingle()
+
+      if (cacheReadError) console.error('Itinerary cache read error:', cacheReadError.message)
+
+      if (cached) {
+        cacheHit = true
+        content = contentFromCacheRow(cached as DestinationCache & { destination_intro?: string | null })
+        coverImageUrl = cached.cover_image_url ?? null
+        sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
+
+        const hasCurrentCover = typeof coverImageUrl === 'string' && coverImageUrl.includes(`cover-${COVER_IMAGE_VERSION}.png`)
+        const hasCurrentSections = sectionImageUrls.length > 0 && sectionImageUrls.every((url, i) => {
+          if (!url) return false
+          return url.includes(`section-${SECTION_IMAGE_VERSION}-${i}.png`)
+        })
+        const needsImages = !hasCurrentCover || !hasCurrentSections
+        const needsBonus = !cached.bonus_content_json
+
+        const [imagesResult, bonusResult, logicGridResult] = await Promise.all([
+          needsImages
+            ? Promise.all([
+                !hasCurrentSections ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
+                !hasCurrentCover ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
+              ])
+            : Promise.resolve(null),
+          needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),
+          needsBonus ? generateLogicGrid(destinationDisplayName, audience) : Promise.resolve(null),
+        ])
+
+        const updatePayload: Record<string, unknown> = { hit_count: (cached.hit_count ?? 0) + 1 }
+
+        if (imagesResult) {
+          const [sectionsB64, coverB64] = imagesResult
+          const uploaded = await uploadImagesToStorage(itineraryCacheSlug, coverB64, sectionsB64)
+          if (uploaded.coverUrl) { coverImageUrl = uploaded.coverUrl; updatePayload.cover_image_url = coverImageUrl }
+          if (uploaded.sectionUrls.length > 0) { sectionImageUrls = uploaded.sectionUrls; updatePayload.section_image_urls = sectionImageUrls }
+        }
+
+        if (bonusResult || logicGridResult) {
+          Object.assign(content, bonusResult, logicGridResult ? { logicGrid: logicGridResult } : {})
+          updatePayload.bonus_content_json = {
+            ...((cached.bonus_content_json ?? {}) as Record<string, unknown>),
+            ...bonusResult,
+            ...(logicGridResult ? { logicGrid: logicGridResult } : {}),
+          }
+        }
+
+        await getSupabase().from('destination_cache').update(cacheWritePayload(updatePayload)).eq('destination_slug', itineraryCacheSlug)
+      } else {
+        content = await generateDestinationContent(destinationDisplayName, audience, displayPlaces)
+        const [imagesResult, bonus, logicGrid] = await Promise.all([
+          Promise.all([
+            generateSectionImages(destinationDisplayName, content),
+            generateCoverImage(destinationDisplayName),
+          ]),
+          generateBonusContent(destinationDisplayName, audience),
+          generateLogicGrid(destinationDisplayName, audience),
+        ])
+        Object.assign(content, bonus, { logicGrid })
+
+        if (language !== 'en' && languageNames[language]) {
+          content = await translateContent(content, language, languageNames[language])
+        }
+
+        const [sectionsB64, coverB64] = imagesResult
+        const uploaded = await uploadImagesToStorage(itineraryCacheSlug, coverB64, sectionsB64)
+        coverImageUrl = uploaded.coverUrl
+        sectionImageUrls = uploaded.sectionUrls
+
+        const { error: upsertError } = await getSupabase().from('destination_cache').upsert(cacheWritePayload({
+          destination_slug: itineraryCacheSlug,
+          destination_display_name: destinationDisplayName,
+          destination_intro: content.destinationIntro,
+          sections_json: content.sections,
+          cover_image_url: coverImageUrl,
+          section_image_urls: sectionImageUrls,
+          scavenger_hunt_json: content.scavengerHuntItems,
+          bingo_grid_json: content.bingoGrid,
+          badge_names_json: content.badgeNames,
+          bonus_content_json: bonusToCache(content),
+          answer_key_json: Object.fromEntries(
+            content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
+          ),
+          hit_count: 1,
+        }))
+        if (upsertError) console.error('Itinerary cache upsert error:', upsertError.message)
+      }
+
+      const mapImageB64Result = await generateMapImage(displayPlaces, placeCoords!)
+      const personalizedCoverUrl = coverChild
+        ? await ensurePersonalizedCoverUrl(destinationSlug, destinationDisplayName, coverChild)
+        : null
+
+      const childPersonalization = await personalizationPromise
+      return NextResponse.json({
+        destinationDisplayName, destinationSlug, tripDates, cacheHit,
+        content, coverImageUrl: personalizedCoverUrl ?? coverImageUrl, sectionImageUrls, childPersonalization,
+        language, parentEmail, places: displayPlaces, mapImageB64: mapImageB64Result ?? null,
+      })
+    }
+
+    const audienceHash = hashStr(audience.cacheKey).toString(16)
+    const cacheSlugBase = `${destinationSlug}_aud_${audienceHash}`
+    const cacheSlug = language === 'en' ? cacheSlugBase : `${cacheSlugBase}_${language}`
 
     const { data: cached, error: cacheReadError } = await getSupabase()
       .from('destination_cache')
       .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,bonus_content_json,hit_count')
-      .eq('destination_slug', itineraryCacheSlug)
+      .eq('destination_slug', cacheSlug)
       .maybeSingle()
 
-    if (cacheReadError) console.error('Itinerary cache read error:', cacheReadError.message)
+    if (cacheReadError) console.error('Cache read error:', cacheReadError.message)
 
     if (cached) {
       cacheHit = true
+      const bonus = (cached.bonus_content_json ?? {}) as Record<string, unknown>
       content = contentFromCacheRow(cached as DestinationCache & { destination_intro?: string | null })
+
       coverImageUrl = cached.cover_image_url ?? null
       sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
 
@@ -727,23 +870,20 @@ export async function POST(req: NextRequest) {
 
       if (imagesResult) {
         const [sectionsB64, coverB64] = imagesResult
-        const uploaded = await uploadImagesToStorage(itineraryCacheSlug, coverB64, sectionsB64)
+        const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
         if (uploaded.coverUrl) { coverImageUrl = uploaded.coverUrl; updatePayload.cover_image_url = coverImageUrl }
         if (uploaded.sectionUrls.length > 0) { sectionImageUrls = uploaded.sectionUrls; updatePayload.section_image_urls = sectionImageUrls }
       }
 
       if (bonusResult || logicGridResult) {
+        const merged = { ...bonus, ...bonusResult, ...(logicGridResult ? { logicGrid: logicGridResult } : {}) }
         Object.assign(content, bonusResult, logicGridResult ? { logicGrid: logicGridResult } : {})
-        updatePayload.bonus_content_json = {
-          ...((cached.bonus_content_json ?? {}) as Record<string, unknown>),
-          ...bonusResult,
-          ...(logicGridResult ? { logicGrid: logicGridResult } : {}),
-        }
+        updatePayload.bonus_content_json = merged
       }
 
-      await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', itineraryCacheSlug)
+      await getSupabase().from('destination_cache').update(cacheWritePayload(updatePayload)).eq('destination_slug', cacheSlug)
     } else {
-      content = await generateDestinationContent(destinationDisplayName, audience, displayPlaces)
+      content = await generateDestinationContent(destinationDisplayName, audience)
       const [imagesResult, bonus, logicGrid] = await Promise.all([
         Promise.all([
           generateSectionImages(destinationDisplayName, content),
@@ -752,19 +892,19 @@ export async function POST(req: NextRequest) {
         generateBonusContent(destinationDisplayName, audience),
         generateLogicGrid(destinationDisplayName, audience),
       ])
+      const [sectionsB64, coverB64] = imagesResult
       Object.assign(content, bonus, { logicGrid })
 
       if (language !== 'en' && languageNames[language]) {
         content = await translateContent(content, language, languageNames[language])
       }
 
-      const [sectionsB64, coverB64] = imagesResult
-      const uploaded = await uploadImagesToStorage(itineraryCacheSlug, coverB64, sectionsB64)
+      const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
       coverImageUrl = uploaded.coverUrl
       sectionImageUrls = uploaded.sectionUrls
 
-      const { error: upsertError } = await getSupabase().from('destination_cache').upsert({
-        destination_slug: itineraryCacheSlug,
+      const { error: upsertError } = await getSupabase().from('destination_cache').upsert(cacheWritePayload({
+        destination_slug: cacheSlug,
         destination_display_name: destinationDisplayName,
         destination_intro: content.destinationIntro,
         sections_json: content.sections,
@@ -778,139 +918,31 @@ export async function POST(req: NextRequest) {
           content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
         ),
         hit_count: 1,
-      })
-      if (upsertError) console.error('Itinerary cache upsert error:', upsertError.message)
+      }))
+      if (upsertError) console.error('Cache upsert error:', upsertError.message)
     }
 
-    const mapImageB64Result = await generateMapImage(displayPlaces, placeCoords!)
+    const childPersonalization = await personalizationPromise
     const personalizedCoverUrl = coverChild
       ? await ensurePersonalizedCoverUrl(destinationSlug, destinationDisplayName, coverChild)
       : null
 
-    const childPersonalization = await personalizationPromise
     return NextResponse.json({
-      destinationDisplayName, destinationSlug, tripDates, cacheHit,
-      content, coverImageUrl: personalizedCoverUrl ?? coverImageUrl, sectionImageUrls, childPersonalization,
-      language, parentEmail, places: displayPlaces, mapImageB64: mapImageB64Result ?? null,
+      destinationDisplayName,
+      destinationSlug,
+      tripDates,
+      cacheHit,
+      content,
+      coverImageUrl: personalizedCoverUrl ?? coverImageUrl,
+      sectionImageUrls,
+      childPersonalization,
+      language,
+      parentEmail,
+      places: undefined,
+      mapImageB64: null,
     })
+  } catch (error) {
+    console.error('[generate-book]', error)
+    return NextResponse.json({ error: userSafeErrorMessage(error) }, { status: 500 })
   }
-
-  const audienceHash = hashStr(audience.cacheKey).toString(16)
-  const cacheSlugBase = `${destinationSlug}_aud_${audienceHash}`
-  const cacheSlug = language === 'en' ? cacheSlugBase : `${cacheSlugBase}_${language}`
-
-  // Check destination cache — select only non-image columns to avoid large row reads
-  const { data: cached, error: cacheReadError } = await getSupabase()
-    .from('destination_cache')
-    .select('destination_slug,destination_display_name,destination_intro,sections_json,scavenger_hunt_json,bingo_grid_json,badge_names_json,answer_key_json,cover_image_url,section_image_urls,bonus_content_json,hit_count')
-    .eq('destination_slug', cacheSlug)
-    .maybeSingle()
-
-  if (cacheReadError) console.error('Cache read error:', cacheReadError.message)
-
-  if (cached) {
-    cacheHit = true
-    const bonus = (cached.bonus_content_json ?? {}) as Record<string, unknown>
-    content = contentFromCacheRow(cached as DestinationCache & { destination_intro?: string | null })
-
-    coverImageUrl = cached.cover_image_url ?? null
-    sectionImageUrls = (cached.section_image_urls as (string | null)[] | null) ?? []
-
-    // If missing images or bonus content, fill the gaps — personalization is already running in parallel
-    const hasCurrentCover = typeof coverImageUrl === 'string' && coverImageUrl.includes(`cover-${COVER_IMAGE_VERSION}.png`)
-    const hasCurrentSections = sectionImageUrls.length > 0 && sectionImageUrls.every((url, i) => {
-      if (!url) return false
-      return url.includes(`section-${SECTION_IMAGE_VERSION}-${i}.png`)
-    })
-    const needsImages = !hasCurrentCover || !hasCurrentSections
-    const needsBonus = !cached.bonus_content_json
-
-    const [imagesResult, bonusResult, logicGridResult] = await Promise.all([
-      needsImages
-        ? Promise.all([
-            !hasCurrentSections ? generateSectionImages(destinationDisplayName, content) : Promise.resolve([]),
-            !hasCurrentCover ? generateCoverImage(destinationDisplayName) : Promise.resolve(null),
-          ])
-        : Promise.resolve(null),
-      needsBonus ? generateBonusContent(destinationDisplayName, audience) : Promise.resolve(null),
-      needsBonus ? generateLogicGrid(destinationDisplayName, audience) : Promise.resolve(null),
-    ])
-
-    const updatePayload: Record<string, unknown> = { hit_count: (cached.hit_count ?? 0) + 1 }
-
-    if (imagesResult) {
-      const [sectionsB64, coverB64] = imagesResult
-      const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
-      if (uploaded.coverUrl) { coverImageUrl = uploaded.coverUrl; updatePayload.cover_image_url = coverImageUrl }
-      if (uploaded.sectionUrls.length > 0) { sectionImageUrls = uploaded.sectionUrls; updatePayload.section_image_urls = sectionImageUrls }
-    }
-
-    if (bonusResult || logicGridResult) {
-      const merged = { ...bonus, ...bonusResult, ...(logicGridResult ? { logicGrid: logicGridResult } : {}) }
-      Object.assign(content, bonusResult, logicGridResult ? { logicGrid: logicGridResult } : {})
-      updatePayload.bonus_content_json = merged
-    }
-
-    await getSupabase().from('destination_cache').update(updatePayload).eq('destination_slug', cacheSlug)
-  } else {
-    // Cache miss — generate content first, then images + bonus (mini) + logic grid (gpt-4o) all in parallel
-    content = await generateDestinationContent(destinationDisplayName, audience)
-    const [imagesResult, bonus, logicGrid] = await Promise.all([
-      Promise.all([
-        generateSectionImages(destinationDisplayName, content),
-        generateCoverImage(destinationDisplayName),
-      ]),
-      generateBonusContent(destinationDisplayName, audience),
-      generateLogicGrid(destinationDisplayName, audience),
-    ])
-    const [sectionsB64, coverB64] = imagesResult
-    Object.assign(content, bonus, { logicGrid })
-
-    if (language !== 'en' && languageNames[language]) {
-      content = await translateContent(content, language, languageNames[language])
-    }
-
-    const uploaded = await uploadImagesToStorage(cacheSlug, coverB64, sectionsB64)
-    coverImageUrl = uploaded.coverUrl
-    sectionImageUrls = uploaded.sectionUrls
-
-    const { error: upsertError } = await getSupabase().from('destination_cache').upsert({
-      destination_slug: cacheSlug,
-      destination_display_name: destinationDisplayName,
-      destination_intro: content.destinationIntro,
-      sections_json: content.sections,
-      cover_image_url: coverImageUrl,
-      section_image_urls: sectionImageUrls,
-      scavenger_hunt_json: content.scavengerHuntItems,
-      bingo_grid_json: content.bingoGrid,
-      badge_names_json: content.badgeNames,
-      bonus_content_json: bonusToCache(content),
-      answer_key_json: Object.fromEntries(
-        content.sections.map((s) => [s.title, s.thinkQuestionAnswer])
-      ),
-      hit_count: 1,
-    })
-    if (upsertError) console.error('Cache upsert error:', upsertError.message)
-  }
-
-  // Personalization has been running the whole time — just await it now
-  const childPersonalization = await personalizationPromise
-  const personalizedCoverUrl = coverChild
-    ? await ensurePersonalizedCoverUrl(destinationSlug, destinationDisplayName, coverChild)
-    : null
-
-  return NextResponse.json({
-    destinationDisplayName,
-    destinationSlug,
-    tripDates,
-    cacheHit,
-    content,
-    coverImageUrl: personalizedCoverUrl ?? coverImageUrl,
-    sectionImageUrls,
-    childPersonalization,
-    language,
-    parentEmail,
-    places: undefined,
-    mapImageB64: null,
-  })
 }

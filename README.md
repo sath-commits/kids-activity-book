@@ -42,16 +42,19 @@ create table destination_cache (
   destination_display_name text not null,
   destination_intro text default '',
   sections_json jsonb not null,
-  cover_image_b64 text not null,
-  section_images_b64 jsonb not null,
+  cover_image_url text,
+  section_image_urls jsonb default '[]'::jsonb,
   scavenger_hunt_json jsonb not null,
   bingo_grid_json jsonb not null,
   badge_names_json jsonb not null,
   answer_key_json jsonb not null,
+  bonus_content_json jsonb,
   hit_count integer default 1,
   created_at timestamptz default now()
 );
 ```
+
+If your existing table still has legacy `cover_image_b64` / `section_images_b64` columns marked `not null`, either make them nullable or keep them temporarily while the app backfills empty values for backward compatibility.
 
 ## Cache Architecture
 
