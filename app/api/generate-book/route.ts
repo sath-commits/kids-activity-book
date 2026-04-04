@@ -86,6 +86,164 @@ function tryExtractAndParseJsonArray<T>(raw: string): T | null {
   })()
 }
 
+function asStringArray(value: unknown, limit: number, fallback: string[] = []): string[] {
+  if (!Array.isArray(value)) return fallback
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+    .slice(0, limit)
+}
+
+function normalizeBookContent(content: Partial<BookContent>): BookContent | null {
+  const rawSections = Array.isArray(content.sections) ? content.sections : []
+  const sections = rawSections
+    .map((section, index) => {
+      if (!section || typeof section !== 'object') return null
+      const s = section as unknown as Record<string, unknown>
+      const title = typeof s.title === 'string' ? s.title.trim() : ''
+      if (!title) return null
+
+      return {
+        id: typeof s.id === 'string' && s.id.trim() ? s.id.trim() : `section-${index + 1}`,
+        title,
+        emoji: typeof s.emoji === 'string' && s.emoji.trim() ? s.emoji.trim() : '🌲',
+        historyBlurb: typeof s.historyBlurb === 'string' ? s.historyBlurb.trim() : '',
+        funFacts: asStringArray(s.funFacts, 9),
+        whatDoYouSee: asStringArray(s.whatDoYouSee, 5),
+        findThese: asStringArray(s.findThese, 4),
+        challenge: typeof s.challenge === 'string' ? s.challenge.trim() : '',
+        thinkQuestion: typeof s.thinkQuestion === 'string' ? s.thinkQuestion.trim() : '',
+        thinkQuestionAnswer: typeof s.thinkQuestionAnswer === 'string' ? s.thinkQuestionAnswer.trim() : '',
+        carChallenge: typeof s.carChallenge === 'string' && s.carChallenge.trim() ? s.carChallenge.trim() : null,
+        imagePrompt: typeof s.imagePrompt === 'string' ? s.imagePrompt.trim() : title,
+      }
+    })
+    .filter((section): section is BookContent['sections'][number] => section !== null)
+
+  if (sections.length === 0) return null
+
+  const badgeNames = asStringArray(content.badgeNames, sections.length)
+  while (badgeNames.length < sections.length) {
+    badgeNames.push(`${sections[badgeNames.length].title} Explorer`)
+  }
+
+  return {
+    destinationIntro: typeof content.destinationIntro === 'string' ? content.destinationIntro.trim() : '',
+    sections,
+    scavengerHuntItems: asStringArray(content.scavengerHuntItems, 12),
+    bingoGrid: asStringArray(content.bingoGrid, 24),
+    badgeNames,
+    crosswordWords: Array.isArray(content.crosswordWords)
+      ? content.crosswordWords
+          .map((item) => {
+            if (!item || typeof item !== 'object') return null
+            const entry = item as Record<string, unknown>
+            const word = typeof entry.word === 'string' ? entry.word.trim() : ''
+            const clue = typeof entry.clue === 'string' ? entry.clue.trim() : ''
+            if (!word || !clue) return null
+            return { word, clue }
+          })
+          .filter((item): item is NonNullable<BookContent['crosswordWords']>[number] => item !== null)
+      : undefined,
+    sillyChallenges: asStringArray(content.sillyChallenges, 12),
+    cryptogramPhrase: typeof content.cryptogramPhrase === 'string' ? content.cryptogramPhrase.trim() : undefined,
+    rebusPuzzles: Array.isArray(content.rebusPuzzles)
+      ? content.rebusPuzzles
+          .map((item) => {
+            if (!item || typeof item !== 'object') return null
+            const entry = item as Record<string, unknown>
+            const equation = typeof entry.equation === 'string' ? entry.equation.trim() : ''
+            const answer = typeof entry.answer === 'string' ? entry.answer.trim() : ''
+            if (!equation || !answer) return null
+            return { equation, answer }
+          })
+          .filter((item): item is NonNullable<BookContent['rebusPuzzles']>[number] => item !== null)
+      : undefined,
+    logicGrid: content.logicGrid,
+    travelTrivia: Array.isArray(content.travelTrivia)
+      ? content.travelTrivia
+          .map((item) => {
+            if (!item || typeof item !== 'object') return null
+            const entry = item as Record<string, unknown>
+            const question = typeof entry.question === 'string' ? entry.question.trim() : ''
+            const answer = typeof entry.answer === 'string' ? entry.answer.trim() : ''
+            if (!question || !answer) return null
+            return { question, answer }
+          })
+          .filter((item): item is NonNullable<BookContent['travelTrivia']>[number] => item !== null)
+      : undefined,
+    travelMenu: Array.isArray(content.travelMenu)
+      ? content.travelMenu
+          .map((menu) => {
+            if (!menu || typeof menu !== 'object') return null
+            const entry = menu as Record<string, unknown>
+            const category = typeof entry.category === 'string' ? entry.category.trim() : ''
+            const items = Array.isArray(entry.items)
+              ? entry.items
+                  .map((item) => {
+                    if (!item || typeof item !== 'object') return null
+                    const food = item as Record<string, unknown>
+                    const name = typeof food.name === 'string' ? food.name.trim() : ''
+                    const description = typeof food.description === 'string' ? food.description.trim() : ''
+                    const price = typeof food.price === 'string' ? food.price.trim() : ''
+                    if (!name || !description || !price) return null
+                    return { name, description, price }
+                  })
+                  .filter((item): item is { name: string; description: string; price: string } => item !== null)
+              : []
+            if (!category || items.length === 0) return null
+            return { category, items }
+          })
+          .filter((item): item is NonNullable<BookContent['travelMenu']>[number] => item !== null)
+      : undefined,
+    topFiveLists: Array.isArray(content.topFiveLists)
+      ? content.topFiveLists
+          .map((item) => {
+            if (!item || typeof item !== 'object') return null
+            const entry = item as Record<string, unknown>
+            const title = typeof entry.title === 'string' ? entry.title.trim() : ''
+            const items = asStringArray(entry.items, 5)
+            if (!title || items.length === 0) return null
+            return { title, items }
+          })
+          .filter((item): item is NonNullable<BookContent['topFiveLists']>[number] => item !== null)
+      : undefined,
+    comicStrip: content.comicStrip && typeof content.comicStrip === 'object'
+      ? (() => {
+          const comic = content.comicStrip as Record<string, unknown>
+          const title = typeof comic.title === 'string' ? comic.title.trim() : ''
+          const panels = Array.isArray(comic.panels)
+            ? comic.panels
+                .map((item) => {
+                  if (!item || typeof item !== 'object') return null
+                  const scene = typeof (item as Record<string, unknown>).scene === 'string'
+                    ? ((item as Record<string, unknown>).scene as string).trim()
+                    : ''
+                  return scene ? { scene } : null
+                })
+                .filter((item): item is { scene: string } => item !== null)
+            : []
+          return title && panels.length > 0 ? { title, panels } : undefined
+        })()
+      : undefined,
+    mapDrawingChallenge: content.mapDrawingChallenge && typeof content.mapDrawingChallenge === 'object'
+      ? (() => {
+          const map = content.mapDrawingChallenge as Record<string, unknown>
+          const instructions = asStringArray(map.instructions, 8)
+          const landmarks = asStringArray(map.landmarks, 8)
+          return instructions.length > 0 || landmarks.length > 0 ? { instructions, landmarks } : undefined
+        })()
+      : undefined,
+    timeCapsuleLetter: content.timeCapsuleLetter && typeof content.timeCapsuleLetter === 'object'
+      ? (() => {
+          const capsule = content.timeCapsuleLetter as Record<string, unknown>
+          const prompts = asStringArray(capsule.prompts, 12)
+          return prompts.length > 0 ? { prompts } : undefined
+        })()
+      : undefined,
+  }
+}
+
 function normalizeInterestWords(children: Child[]): string[] {
   const seen = new Set<string>()
   const words: string[] = []
@@ -307,19 +465,10 @@ async function generateDestinationContent(displayName: string, audience: Audienc
     ? `Generate sections for ONLY these specific places the family will visit (in this order): ${places.join(', ')}. Do not add or substitute other attractions — only cover what they listed.`
     : `Generate 4-8 sections depending on how many distinct notable attractions the destination has. If it is a city, pick the most iconic kid-friendly landmarks/activities. If it is a national park, each major attraction/trail/feature gets a section. If it is a zoo or museum, pick themed zones.`
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: 'gpt-4o',
-    temperature: 0.7,
-    max_tokens: 6000,
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are an expert children\'s educational content creator specializing in travel destinations and nature. You create age-appropriate, fun, and educational activity booklet content for kids ages 4-12. You write in a warm, encouraging, adventurous tone. STRICT CONTENT RULES: All content must be 100% safe, legal, and appropriate for children. Never include anything violent, scary, sexual, politically controversial, or that encourages dangerous behavior. Return ONLY valid JSON with no markdown, no code fences. If any place names in the list appear to be misspelled, interpret them as the closest real landmark or attraction at the destination.',
-      },
-      {
-        role: 'user',
-        content: `Create a junior explorer activity booklet content for: ${displayName}
+  const systemPrompt =
+    'You are an expert children\'s educational content creator specializing in travel destinations and nature. You create age-appropriate, fun, and educational activity booklet content for kids ages 4-12. You write in a warm, encouraging, adventurous tone. STRICT CONTENT RULES: All content must be 100% safe, legal, and appropriate for children. Never include anything violent, scary, sexual, politically controversial, or that encourages dangerous behavior. Return ONLY valid JSON with no markdown, no code fences. If any place names in the list appear to be misspelled, interpret them as the closest real landmark or attraction at the destination.'
+
+  const userPrompt = `Create a junior explorer activity booklet content for: ${displayName}
 
 If any place names in the list appear to be misspelled, interpret them as the closest real landmark or attraction at the destination.
 
@@ -362,14 +511,26 @@ Additional personalization rules:
 - For younger kids, prefer shorter facts, more concrete observations, and simpler scavenger tasks.
 - For older kids, allow deeper science/history explanations and more thoughtful questions.
 - Weave in the listed interests repeatedly across facts, scavenger hunts, bingo, challenges, badge names, and crossword clues when it fits the destination naturally.
-- Avoid generic filler that could fit any kid. The activities should feel noticeably tuned to this audience profile.`,
-      },
-    ],
-  })
+- Avoid generic filler that could fit any kid. The activities should feel noticeably tuned to this audience profile.`
 
-  const raw = completion.choices[0].message.content?.trim() ?? ''
-  const parsed = tryExtractAndParseJsonObject<BookContent>(raw)
-  if (parsed) return parsed
+  for (const temperature of [0.7, 0.2]) {
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-4o',
+      temperature,
+      max_tokens: 6000,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    })
+
+    const raw = completion.choices[0].message.content?.trim() ?? ''
+    const parsed = tryExtractAndParseJsonObject<Partial<BookContent>>(raw)
+    const normalized = parsed ? normalizeBookContent(parsed) : null
+    if (normalized) return normalized
+  }
+
   throw new Error('Failed to parse GPT content response')
 }
 
